@@ -4,10 +4,23 @@ NimbleHex allows self-hosting of Hex packages.
 
 Features:
 
-* Pluggable storage. NimbleHex ships with local filesystem and S3 implementations
-* Publishing packages via HTTP API
-* Support for multiple repositories
-* Mirroring
+  * Pluggable storage. NimbleHex ships with following adapters:
+
+      * Local filesystem
+
+      * S3
+
+  * Mirroring
+
+  * Publishing packages via HTTP API
+
+  * Hosting of multiple repositories and mirrors
+
+    NimbleHex exposes following URLs for API and repository access:
+
+      * http://some_url/api/<repo>
+
+      * http://some_url/repos/<repo>
 
 ## Setup
 
@@ -23,27 +36,44 @@ Start a development server:
 
 By default, the development server is configured with two repositories:
 
-1. `test_repo` is a custom repository
-2. `hexpm_mirror` is a mirror of the official Hex.pm repository, configured to only fetch package
-   "decimal".
+  * `test_repo` is a custom repository
 
-Both repositories are configured to store files locally. See `config/config.exs` and `config/dev.exs` for more information.
+  * `hexpm_mirror` is a mirror of the official Hex.pm repository, configured to only fetch package
+    `decimal`.
 
-Now, let's create a new package and publish it to our `test_repo` repository:
+Both repositories are configured to store files locally. See [`config/dev.exs`](config/dev.exs) for more information.
 
-    mix new foo
-    cd foo
+Make sure to also read "Deployment with releases" section below releases" section below.
 
-Make following changes to `mix.exs`:
+## Usage
+
+Once you have the NimbleHex server running, here is how you can use it with Mix or Rebar3.
+
+### Usage with Mix
+
+Let's create a new package and publish it to our `test_repo` repository:
+
+    $ mix new foo
+    $ cd foo
+
+Make following changes to that package's `mix.exs`:
 
 ```elixir
   def project() do
     [
-      # ...
+      app: :foo,
+      version: "0.1.0",
+      elixir: "~> 1.9",
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
       description: "Some description",
       package: package(),
-      hex: hex()
+      hex: hex(),
     ]
+  end
+
+  defp deps() do
+    []
   end
 
   defp package() do
@@ -56,6 +86,9 @@ Make following changes to `mix.exs`:
   defp hex() do
     [
       api_url: "http://localhost:4000/api/repos/test_repo",
+
+      # client requires an API key, but since NimbleHex does not
+      # support authentication, you can put any key here
       api_key: "does-not-matter"
     ]
   end
@@ -63,42 +96,79 @@ Make following changes to `mix.exs`:
 
 Now publish the package:
 
-    mix hex.publish package
+    $ mix hex.publish package
 
-Finally, in order to resolve the package, configure Hex to use the custom repository:
+Finally, let's use this package from another project.
 
-    cd /path/to/nimble_hex
-    mix hex.repo add test_repo http://localhost:4000/repos/test_repo --public-key priv/test_repo_public.pem
+First, configure Hex to use the custom repository:
 
-And add it as a dependency from another Mix project:
+    $ cd /path/to/nimble_hex
+    $ mix hex.repo add test_repo http://localhost:4000/repos/test_repo --public-key priv/test_repo_public.pem
+
+Now, create a new Mix project:
+
+    $ mix new bar
+    $ cd bar
+
+And configure the dependency, note the `repo` configuration option.
 
 ```elixir
   defp deps() do
-    {:foo, "~> 0.1", repo: "test_repo"}
+    [
+      {:foo, "~> 0.1", repo: "test_repo"}
+    ]
   end
 ```
 
 Since the development server includes a `hexpm_mirror` repo, let's try that too:
 
-    HEX_MIRROR_URL=http://localhost:4000/repos/hexpm_mirror mix hex.package fetch decimal 1.8.0
+    $ HEX_MIRROR_URL=http://localhost:4000/repos/hexpm_mirror mix hex.package fetch decimal 1.8.0
 
 See [`mix help hex.config`](https://hexdocs.pm/hex/Mix.Tasks.Hex.Config.html) for more information
 about configuring your Hex installation.
 
-## Deploying with releases
+### Usage with Rebar3
+
+Let's create a new package and publish it to our `test_repo` repository:
+
+    $ rebar3 new lib baz
+    $ cd baz
+
+Now, let's configure Rebar3 to use our custom repo:
+
+```erlang
+%% ~/.config/rebar3/rebar.config
+{plugins, [rebar3_hex]}.
+{hex, [
+  {repos, [
+    #{
+      name => <<"test_repo">>,
+
+      %% client requires an API key, but since NimbleHex does not
+      %% support authentication, you can put any key here
+      api_key => <<"does-not-matter">>,
+
+      api_url => <<"http://localhost:4000/api">>,
+      api_repository => <<"test_repo">>
+    }
+  ]}
+]}.
+```
+
+And publish the package specifying the repo:
+
+    $ rebar3 hex publish -r test_repo
+
+**TODO** Finally, let's use this package from another project:
+
+
+### Deployment with releases
 
 It's recommended to deploy NimbleHex with Elixir releases.
 
-Our default releases setup has two additional assumptions:
-
-* Configuration is provided via system environment variables
-* Repositories are configured to use the `NimbleHex.Store.S3` storage engine
-
-See `config/releases.exs` for more information.
-
 Let's now assemble the release locally:
 
-    $ mix release
+    $ MIX_ENV=prod mix release
     * assembling nimble_hex-0.1.0 on MIX_ENV=prod
     (...)
 
@@ -106,38 +176,23 @@ And start it:
 
     PORT=4000 \
     NIMBLE_HEX_URL=http://localhost:4000 \
-    NIMBLE_HEX_S3_ACCESS_KEY_ID=xxx \
-    NIMBLE_HEX_S3_SECRET_ACCESS_KEY=xxx \
-    NIMBLE_HEX_S3_BUCKET=nimblehex \
-    NIMBLE_HEX_S3_REGION=eu-central-1 \
-    NIMBLE_HEX_PRIVATE_KEY=$(cat priv/test_repo_private.pem) \
-    NIMBLE_HEX_PUBLIC_KEY=$(cat priv/test_repo_public.pem) \
     _build/prod/rel/nimble_hex/bin/nimble_hex start
 
-By default, the files stored on S3 are not publicly accessible.
-You can enable public access by setting following bucket policy in your
-bucket's properties:
+As you can see, some configuration can be set by adjusting system environment variables,
+see [`config/releases.exs`](config/releases.exs)
 
-```json
-{
-    "Version": "2008-10-17",
-    "Statement": [
-        {
-            "Sid": "AllowPublicRead",
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": "*"
-            },
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::nimblehex/*"
-        }
-    ]
-}
-```
+Also, see [`mix help release`](https://hexdocs.pm/mix/Mix.Tasks.Release.html?) for general
+information on Elixir releases.
 
-Since we're storing files on S3, we should use the publicly accessible URL as our repo:
+## More information
 
-    mix hex.repo add myrepo https://<bucket>.s3.<region>.amazonaws.com/repos/myrepo --public-key $NIMBLE_HEX_PUBLIC_KEY
+See following modules documentation to learn more about given feature:
+
+* [`NimbleHex.Store.Local`](lib/nimble_hex/store/local.ex)
+
+* [`NimbleHex.Store.S3`](lib/nimble_hex/store/s3.ex)
+
+* [`NimbleHex.Mirror`](lib/nimble_hex/mirror.ex)
 
 ## License
 

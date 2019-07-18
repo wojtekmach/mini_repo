@@ -8,7 +8,7 @@ defmodule NimbleHex.Store.Local do
 
     It can be either a string containing a file system path
     or a tuple containing the application name and the directory
-    to stores files in.
+    to store files in.
 
     To make the path independent from the starting directory
     it's recommended to use either relative file system path

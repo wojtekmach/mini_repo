@@ -1,32 +1,35 @@
 import Config
 
 config :nimble_hex,
-  port: String.to_integer(System.fetch_env!("PORT")),
-  url: System.fetch_env!("NIMBLE_HEX_URL")
+  port: String.to_integer(System.get_env("PORT", "4000")),
+  url: System.get_env("NIMBLE_HEX_URL", "http://localhost:4000")
 
-config :ex_aws,
-  access_key_id: System.fetch_env!("NIMBLE_HEX_S3_ACCESS_KEY_ID"),
-  secret_access_key: System.fetch_env!("NIMBLE_HEX_S3_SECRET_ACCESS_KEY"),
-  json_codec: Jason
+repo_name = String.to_atom(System.get_env("NIMBLE_HEX_REPO_NAME", "test_repo"))
 
-store =
-  {NimbleHex.Store.S3,
-   bucket: System.fetch_env!("NIMBLE_HEX_S3_BUCKET"),
-   region: System.fetch_env!("NIMBLE_HEX_S3_REGION")}
+private_key =
+  System.get_env("NIMBLE_HEX_PRIVATE_KEY") ||
+    File.read!(Path.join([:code.priv_dir(:nimble_hex), "test_repo_private.pem"]))
+
+public_key =
+  System.get_env("NIMBLE_HEX_PUBLIC_KEY") ||
+    File.read!(Path.join([:code.priv_dir(:nimble_hex), "test_repo_public.pem"]))
+
+store = {NimbleHex.Store.Local, root: {:nimble_hex, "data"}}
 
 config :nimble_hex,
   repositories: [
-    myrepo: [
-      private_key: System.fetch_env!("NIMBLE_HEX_PRIVATE_KEY"),
-      public_key: System.fetch_env!("NIMBLE_HEX_PUBLIC_KEY"),
+    "#{repo_name}": [
+      private_key: private_key,
+      public_key: public_key,
       store: store
     ],
     hexpm_mirror: [
-      mirror_name: "hexpm",
-      mirror_url: "https://repo.hex.pm",
-      # 5min
-      sync_interval: 5 * 60 * 1000,
-      public_key: """
+      store: store,
+      upstream_name: "hexpm",
+      upstream_url: "https://repo.hex.pm",
+
+      # https://hex.pm/docs/public_keys
+      upstream_public_key: """
       -----BEGIN PUBLIC KEY-----
       MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApqREcFDt5vV21JVe2QNB
       Edvzk6w36aNFhVGWN5toNJRjRJ6m4hIuG4KaXtDWVLjnvct6MYMfqhC79HAGwyF+
@@ -37,7 +40,11 @@ config :nimble_hex,
       0wIDAQAB
       -----END PUBLIC KEY-----
       """,
-      store: store,
-      only: ~w(decimal)
+
+      # only mirror following packages
+      only: ~w(decimal),
+
+      # 5min
+      sync_interval: 5 * 60 * 1000
     ]
   ]

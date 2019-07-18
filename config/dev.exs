@@ -14,11 +14,18 @@ config :nimble_hex,
       store: store
     ],
     hexpm_mirror: [
-      mirror_name: "hexpm",
-      mirror_url: "https://repo.hex.pm",
+      store: store,
+      upstream_name: "hexpm",
+      upstream_url: "https://repo.hex.pm",
+
+      # only mirror following packages
+      only: ~w(decimal),
+
       # 5min
       sync_interval: 5 * 60 * 1000,
-      public_key: """
+
+      # https://hex.pm/docs/public_keys
+      upstream_public_key: """
       -----BEGIN PUBLIC KEY-----
       MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApqREcFDt5vV21JVe2QNB
       Edvzk6w36aNFhVGWN5toNJRjRJ6m4hIuG4KaXtDWVLjnvct6MYMfqhC79HAGwyF+
@@ -28,8 +35,6 @@ config :nimble_hex,
       J1i2xWFndWa6nfFnRxZmCStCOZWYYPlaxr+FZceFbpMwzTNs4g3d4tLNUcbKAIH4
       0wIDAQAB
       -----END PUBLIC KEY-----
-      """,
-      only: ~w(decimal),
-      store: store
+      """
     ]
   ]
