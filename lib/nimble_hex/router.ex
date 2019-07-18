@@ -9,6 +9,16 @@ defmodule NimbleHex.Router do
   plug :match
   plug :dispatch, builder_opts()
 
+  def call(conn, opts) do
+    conn =
+      Plug.Conn.put_private(conn, :nimble_hex, %{
+        url: opts[:url],
+        repositories: opts[:repositories]
+      })
+
+    super(conn, opts)
+  end
+
   post "/api/repos/:repo/publish" do
     {:ok, tarball, conn} = Plug.Conn.read_body(conn, length: :infinity)
     repo = repo!(conn, repo)
@@ -68,8 +78,14 @@ defmodule NimbleHex.Router do
     send_resp(conn, 404, "not found")
   end
 
-  # TODO: pass allowed repos to router and only allow them here
-  defp repo!(_conn, repo) do
-    String.to_atom(repo)
+  defp repo!(conn, repo) do
+    allowed_repos = conn.private.nimble_hex.repositories
+
+    if repo in allowed_repos do
+      String.to_atom(repo)
+    else
+      raise ArgumentError,
+            "#{inspect(repo)} is not allowed, allowed repos: #{inspect(allowed_repos)}"
+    end
   end
 end
