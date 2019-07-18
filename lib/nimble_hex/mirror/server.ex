@@ -53,8 +53,6 @@ defmodule NimbleHex.Mirror.Server do
           version <- versions do
         sync_release(mirror, config, name, version)
       end
-
-      # TODO: sync docs?
     end
   end
 
