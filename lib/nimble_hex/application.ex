@@ -27,7 +27,7 @@ defmodule NimbleHex.Application do
 
   defp repository_and_mirror_specs(config) do
     for {name, options} <- Keyword.fetch!(config, :repositories) do
-      if options[:mirror_url] do
+      if options[:upstream_url] do
         mirror = struct!(NimbleHex.Mirror, [name: to_string(name)] ++ options)
         {NimbleHex.Mirror.Server, mirror: mirror, name: name}
       else

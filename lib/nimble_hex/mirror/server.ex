@@ -35,9 +35,9 @@ defmodule NimbleHex.Mirror.Server do
 
     config = %{
       :hex_core.default_config()
-      | repo_name: mirror.mirror_name,
-        repo_url: mirror.mirror_url,
-        repo_public_key: mirror.public_key,
+      | repo_name: mirror.upstream_name,
+        repo_url: mirror.upstream_url,
+        repo_public_key: mirror.upstream_public_key,
         http_user_agent_fragment: user_agent_fragment()
     }
 
@@ -124,18 +124,22 @@ defmodule NimbleHex.Mirror.Server do
   end
 
   defp decode_names(mirror, body) do
-    {:ok, payload} = :hex_registry.decode_and_verify_signed(:zlib.gunzip(body), mirror.public_key)
-    :hex_registry.decode_names(payload, mirror.mirror_name)
+    {:ok, payload} = decode_and_verify_signed(body, mirror)
+    :hex_registry.decode_names(payload, mirror.upstream_name)
   end
 
   defp decode_versions(mirror, body) do
-    {:ok, payload} = :hex_registry.decode_and_verify_signed(:zlib.gunzip(body), mirror.public_key)
-    :hex_registry.decode_versions(payload, mirror.mirror_name)
+    {:ok, payload} = decode_and_verify_signed(body, mirror)
+    :hex_registry.decode_versions(payload, mirror.upstream_name)
   end
 
   defp decode_package(mirror, body, name) do
-    {:ok, payload} = :hex_registry.decode_and_verify_signed(:zlib.gunzip(body), mirror.public_key)
-    :hex_registry.decode_package(payload, mirror.mirror_name, name)
+    {:ok, payload} = decode_and_verify_signed(body, mirror)
+    :hex_registry.decode_package(payload, mirror.upstream_name, name)
+  end
+
+  defp decode_and_verify_signed(body, mirror) do
+    :hex_registry.decode_and_verify_signed(:zlib.gunzip(body), mirror.upstream_public_key)
   end
 
   defp user_agent_fragment() do
