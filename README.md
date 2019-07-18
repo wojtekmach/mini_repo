@@ -22,6 +22,8 @@ Features:
 
       * http://some_url/repos/<repo>
 
+Learn more about Hex specifications [here](https://github.com/hexpm/specifications).
+
 ## Setup
 
 Clone and install dependencies:
@@ -161,7 +163,6 @@ And publish the package specifying the repo:
 
 **TODO** Finally, let's use this package from another project:
 
-
 ### Deployment with releases
 
 It's recommended to deploy NimbleHex with Elixir releases.
@@ -193,6 +194,19 @@ See following modules documentation to learn more about given feature:
 * [`NimbleHex.Store.S3`](lib/nimble_hex/store/s3.ex)
 
 * [`NimbleHex.Mirror`](lib/nimble_hex/mirror.ex)
+
+## Contributing
+
+The goal of NimbleHex is to provide a minimal server that implements Hex specifications. Why
+minimal? By keeping the project focused on bare minimum we hope it's easy to understand and
+serves as a good starting point for a more complete solution that makes sense in a given
+organization. A production grade system should include infrastructure for monitoring, backups,
+SSL, and more, not to mention features like user management, SSO and such, but that's out of
+the scope of NimbleHex project.
+
+We welcome anyone to contribute to the project, especially around documentation and guides,
+but features specific to narrow set of users likely won't be accepted. For a complete and
+production-grade implementation see source code of [Hex.pm](https://github.com/hexpm/hexpm).
 
 ## License
 
