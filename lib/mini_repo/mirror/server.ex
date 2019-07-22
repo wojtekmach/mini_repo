@@ -82,12 +82,19 @@ defmodule MiniRepo.Mirror.Server do
         fn name ->
           {:ok, releases} = sync_package(mirror, config, name)
 
-          for release <- releases do
-            :ok = sync_tarball(mirror, config, name, release.version)
-          end
+          Task.Supervisor.async_stream_nolink(
+            MiniRepo.TaskSupervisor,
+            releases,
+            fn release ->
+              :ok = sync_tarball(mirror, config, name, release.version)
+            end,
+            ordered: false
+          )
+          |> Stream.run()
 
           {name, releases}
-        end
+        end,
+        ordered: false
       )
 
     for {:ok, {name, releases}} <- stream, into: %{} do
@@ -110,9 +117,15 @@ defmodule MiniRepo.Mirror.Server do
       Task.Supervisor.async_stream_nolink(MiniRepo.TaskSupervisor, diff.releases, fn {name, map} ->
         {:ok, releases} = sync_package(mirror, config, name)
 
-        for version <- map.created do
-          :ok = sync_tarball(mirror, config, name, version)
-        end
+        Task.Supervisor.async_stream_nolink(
+          MiniRepo.TaskSupervisor,
+          map.created,
+          fn version ->
+            :ok = sync_tarball(mirror, config, name, version)
+          end,
+          ordered: false
+        )
+        |> Stream.run()
 
         for version <- map.deleted do
           store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])

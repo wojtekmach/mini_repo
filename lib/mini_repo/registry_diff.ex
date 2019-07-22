@@ -24,10 +24,10 @@ defmodule MiniRepo.RegistryDiff do
 
         {name,
          %{
-           created: upstream_versions -- mirror_versions,
-           deleted: mirror_versions -- upstream_versions,
-           retired: upstream_retired -- mirror_retired,
-           unretired: mirror_retired -- upstream_retired
+           created: sort_versions(upstream_versions -- mirror_versions),
+           deleted: sort_versions(mirror_versions -- upstream_versions),
+           retired: sort_versions(upstream_retired -- mirror_retired),
+           unretired: sort_versions(mirror_retired -- upstream_retired)
          }}
       end
 
@@ -43,10 +43,14 @@ defmodule MiniRepo.RegistryDiff do
 
     %{
       packages: %{
-        created: created_packages,
-        deleted: deleted_packages
+        created: Enum.sort(created_packages),
+        deleted: Enum.sort(deleted_packages)
       },
       releases: releases
     }
+  end
+
+  defp sort_versions(list) do
+    Enum.sort(list, &Version.compare(&1, &2) == :lt)
   end
 end
