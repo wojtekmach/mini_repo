@@ -1,12 +1,12 @@
 defmodule NimbleHex.Repository.Server do
   @moduledoc false
-  use Agent
 
-  @manifest_vsn 1
+  use Agent
+  alias NimbleHex.RegistryBackup
 
   def start_link(options) do
     {repository, options} = Keyword.pop(options, :repository)
-    Agent.start_link(fn -> load_registry_backup(repository) end, options)
+    Agent.start_link(fn -> RegistryBackup.load(repository) end, options)
   end
 
   def publish(pid, tarball) do
@@ -101,40 +101,10 @@ defmodule NimbleHex.Repository.Server do
     end)
   end
 
-  defp save_registry_backup(repository) do
-    contents = %{
-      manifest_vsn: @manifest_vsn,
-      registry: repository.registry
-    }
-
-    store_put(repository, backup_path(repository), :erlang.term_to_binary(contents))
-  end
-
-  defp load_registry_backup(repository) do
-    registry =
-      case store_fetch(repository, backup_path(repository)) do
-        {:ok, contents} ->
-          manifest_vsn = @manifest_vsn
-
-          %{manifest_vsn: ^manifest_vsn, registry: registry} = :erlang.binary_to_term(contents)
-
-          registry
-
-        {:error, :not_found} ->
-          %{}
-      end
-
-    %{repository | registry: registry}
-  end
-
-  defp backup_path(repository) do
-    repository.name <> ".bin"
-  end
-
   defp update_registry(repository, package_name, fun) do
     repository = Map.update!(repository, :registry, fun)
     build_partial_registry(repository, package_name)
-    save_registry_backup(repository)
+    RegistryBackup.save(repository)
     repository
   end
 
@@ -159,10 +129,6 @@ defmodule NimbleHex.Repository.Server do
   defp store_put(repository, name, content) do
     options = []
     :ok = NimbleHex.Store.put(repository.store, name, content, options)
-  end
-
-  defp store_fetch(repository, name) do
-    NimbleHex.Store.fetch(repository.store, name)
   end
 
   defp store_delete(repository, name) do

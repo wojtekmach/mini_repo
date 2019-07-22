@@ -40,7 +40,9 @@ defmodule NimbleHex.RegistryBuilder do
   def build_versions(repository, registry) do
     packages =
       for {name, releases} <- Enum.sort_by(registry, &elem(&1, 0)) do
-        versions = for release <- releases, do: release.version
+        versions =
+          releases |> Enum.map(& &1.version) |> Enum.sort(&(Version.compare(&1, &2) == :lt))
+
         package = %{name: name, versions: versions}
         Map.put(package, :retired, retired_index(releases))
       end

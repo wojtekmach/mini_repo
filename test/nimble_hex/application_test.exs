@@ -112,6 +112,17 @@ defmodule NimbleHex.ApplicationTest do
     Process.sleep(500)
     {:ok, {200, _, packages}} = :hex_repo.get_names(mirror_config)
     assert packages == [%{name: "foo"}]
+    {:ok, {200, _, _}} = :hex_repo.get_tarball(mirror_config, "foo", "1.0.0")
+
+    metadata = %{"name" => "foo", "version" => "1.1.0", "requirements" => []}
+    files = [{'lib/foo.ex', "defmodule Foo do; end"}]
+    {:ok, {tarball, _}} = :hex_tarball.create(metadata, files)
+    {:ok, {200, _, _}} = :hex_api_release.publish(config, tarball)
+
+    Process.sleep(500)
+    {:ok, {200, _, packages}} = :hex_repo.get_versions(mirror_config)
+    assert packages == [%{name: "foo", retired: [], versions: ["1.0.0", "1.1.0"]}]
+    {:ok, {200, _, _}} = :hex_repo.get_tarball(mirror_config, "foo", "1.1.0")
   after
     Application.stop(:nimble_hex)
   end

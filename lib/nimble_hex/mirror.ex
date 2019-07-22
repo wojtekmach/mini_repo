@@ -58,6 +58,7 @@ defmodule NimbleHex.Mirror do
     :upstream_public_key,
     :sync_interval,
     :only,
-    :store
+    :store,
+    registry: %{}
   ]
 end

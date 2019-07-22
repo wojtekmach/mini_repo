@@ -3,6 +3,7 @@ defmodule NimbleHex.Mirror.Server do
 
   use GenServer
   require Logger
+  alias NimbleHex.{RegistryDiff, RegistryBackup}
 
   def start_link(options) do
     {mirror, options} = Keyword.pop(options, :mirror)
@@ -11,6 +12,7 @@ defmodule NimbleHex.Mirror.Server do
 
   @impl true
   def init(mirror) do
+    mirror = RegistryBackup.load(mirror)
     {:ok, mirror, {:continue, :sync}}
   end
 
@@ -21,9 +23,15 @@ defmodule NimbleHex.Mirror.Server do
 
   @impl true
   def handle_info(:sync, mirror) do
-    sync(mirror)
-    schedule_sync(mirror)
-    {:noreply, mirror}
+    case sync(mirror) do
+      {:ok, %NimbleHex.Mirror{} = new_mirror} ->
+        schedule_sync(new_mirror)
+        {:noreply, new_mirror}
+
+      _ ->
+        schedule_sync(mirror)
+        {:noreply, mirror}
+    end
   end
 
   defp schedule_sync(mirror) do
@@ -31,8 +39,6 @@ defmodule NimbleHex.Mirror.Server do
   end
 
   defp sync(mirror) do
-    # TODO: currently sync is naive and downloads everything everytime.
-
     config = %{
       :hex_core.default_config()
       | repo_name: mirror.upstream_name,
@@ -43,19 +49,84 @@ defmodule NimbleHex.Mirror.Server do
 
     with {:ok, names} when is_list(names) <- sync_names(mirror, config),
          {:ok, versions} when is_list(versions) <- sync_versions(mirror, config) do
-      for %{name: name} <- names,
-          !mirror.only or name in mirror.only do
-        sync_package(mirror, config, name)
-      end
+      versions =
+        for %{name: name} = map <- versions,
+            !mirror.only or name in mirror.only,
+            into: %{},
+            do: {name, Map.delete(map, :version)}
 
-      for %{name: name, versions: versions} <- versions,
-          !mirror.only or name in mirror.only,
-          version <- versions do
-        sync_release(mirror, config, name, version)
-      end
+      diff = RegistryDiff.diff(mirror.registry, versions)
+      Logger.debug [inspect(__MODULE__), " diff: ", inspect(diff, pretty: true)]
+      created = sync_created_packages(mirror, config, diff)
+      deleted = sync_deleted_packages(mirror, config, diff)
+      updated = sync_releases(mirror, config, diff)
+
+      mirror =
+        update_in(mirror.registry, fn registry ->
+          registry
+          |> Map.delete(deleted)
+          |> Map.merge(created)
+          |> Map.merge(updated)
+        end)
+
+      RegistryBackup.save(mirror)
+      {:ok, mirror}
     end
   end
 
+  defp sync_created_packages(mirror, config, diff) do
+    stream =
+      Task.Supervisor.async_stream_nolink(
+        NimbleHex.TaskSupervisor,
+        diff.packages.created,
+        fn name ->
+          {:ok, releases} = sync_package(mirror, config, name)
+
+          for release <- releases do
+            :ok = sync_tarball(mirror, config, name, release.version)
+          end
+
+          {name, releases}
+        end
+      )
+
+    for {:ok, {name, releases}} <- stream, into: %{} do
+      {name, releases}
+    end
+  end
+
+  defp sync_deleted_packages(mirror, _config, diff) do
+    for name <- diff.packages.deleted do
+      for %{version: version} <- mirror.registry[name] do
+        store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
+      end
+
+      name
+    end
+  end
+
+  defp sync_releases(mirror, config, diff) do
+    stream =
+      Task.Supervisor.async_stream_nolink(NimbleHex.TaskSupervisor, diff.releases, fn {name, map} ->
+        {:ok, releases} = sync_package(mirror, config, name)
+
+        for version <- map.created do
+          :ok = sync_tarball(mirror, config, name, version)
+        end
+
+        for version <- map.deleted do
+          store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
+        end
+
+        {name, releases}
+      end)
+
+    for {:ok, {name, releases}} <- stream, into: %{} do
+      {name, releases}
+    end
+  end
+
+  # we don't use this resource for anything, we just copy it (since it's signed by upstream)
   defp sync_names(mirror, config) do
     with {:ok, {200, _, names_signed}} <- fetch_names(config),
          {:ok, names} <- decode_names(mirror, names_signed),
@@ -92,13 +163,13 @@ defmodule NimbleHex.Mirror.Server do
     end
   end
 
-  defp sync_release(mirror, config, name, version) do
+  defp sync_tarball(mirror, config, name, version) do
     with {:ok, {200, _headers, tarball}} <- fetch_tarball(config, name, version),
          :ok <- store_put(mirror, ["tarballs", "#{name}-#{version}.tar"], tarball) do
       :ok
     else
       other ->
-        Logger.warn("#{inspect(__MODULE__)} sync_release failed: #{inspect(other)}")
+        Logger.warn("#{inspect(__MODULE__)} sync_tarball failed: #{inspect(other)}")
         other
     end
   end
@@ -149,5 +220,9 @@ defmodule NimbleHex.Mirror.Server do
 
   defp store_put(mirror, path, contents) do
     NimbleHex.Store.put(mirror.store, ["repos", mirror.name] ++ List.wrap(path), contents)
+  end
+
+  defp store_delete(repository, name) do
+    NimbleHex.Store.delete(repository.store, name)
   end
 end

@@ -28,7 +28,8 @@ defmodule NimbleHex.Application do
         options: http_options
       )
 
-    children = repository_specs(repos) ++ [endpoint_spec]
+    task_supervisor = {Task.Supervisor, name: NimbleHex.TaskSupervisor}
+    children = [task_supervisor] ++ repository_specs(repos) ++ [endpoint_spec]
     opts = [strategy: :one_for_one, name: NimbleHex.Supervisor]
     Supervisor.start_link(children, opts)
   end
