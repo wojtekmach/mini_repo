@@ -206,7 +206,7 @@ the scope of MiniRepo project.
 
 We welcome anyone to contribute to the project, especially around documentation and guides,
 but features specific to narrow set of users likely won't be accepted. For a complete and
-production-grade implementation see source code of Hex.pm, however keep in mind it's optimised
+production-grade implementation see source code of [Hex.pm](https://github.com/hexpm/hexpm), however keep in mind it's optimised
 for running the public registry for the community and thus have different features and constraints
 than a self-hosted solution might have.
 
