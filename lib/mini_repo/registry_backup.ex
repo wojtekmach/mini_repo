@@ -1,4 +1,4 @@
-defmodule NimbleHex.RegistryBackup do
+defmodule MiniRepo.RegistryBackup do
   @moduledoc false
 
   @manifest_vsn 1
@@ -35,10 +35,10 @@ defmodule NimbleHex.RegistryBackup do
 
   defp store_put(repository, name, content) do
     options = []
-    :ok = NimbleHex.Store.put(repository.store, name, content, options)
+    :ok = MiniRepo.Store.put(repository.store, name, content, options)
   end
 
   defp store_fetch(repository, name) do
-    NimbleHex.Store.fetch(repository.store, name)
+    MiniRepo.Store.fetch(repository.store, name)
   end
 end

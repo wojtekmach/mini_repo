@@ -1,4 +1,4 @@
-defmodule NimbleHex.Store.Local do
+defmodule MiniRepo.Store.Local do
   @moduledoc """
   Local file system storage.
 
@@ -15,7 +15,7 @@ defmodule NimbleHex.Store.Local do
     or the tuple.
   """
 
-  @behaviour NimbleHex.Store
+  @behaviour MiniRepo.Store
 
   require Logger
   defstruct [:root]

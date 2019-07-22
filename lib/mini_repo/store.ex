@@ -1,4 +1,4 @@
-defmodule NimbleHex.Store do
+defmodule MiniRepo.Store do
   @callback put(path :: Path.t(), value :: binary, options :: keyword, state :: any) ::
               :ok | {:error, term}
 

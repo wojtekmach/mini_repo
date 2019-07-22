@@ -1,12 +1,12 @@
 import Config
 
-config :nimble_hex,
+config :mini_repo,
   port: 4001,
   url: "http://localhost:4001"
 
-store = {NimbleHex.Store.Local, root: {:nimble_hex, "data"}}
+store = {MiniRepo.Store.Local, root: {:mini_repo, "data"}}
 
-config :nimble_hex,
+config :mini_repo,
   repositories: [
     test_repo: [
       store: store,

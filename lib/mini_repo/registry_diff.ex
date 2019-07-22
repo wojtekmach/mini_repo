@@ -1,4 +1,4 @@
-defmodule NimbleHex.RegistryDiff do
+defmodule MiniRepo.RegistryDiff do
   @moduledoc false
 
   def diff(mirror, upstream) do

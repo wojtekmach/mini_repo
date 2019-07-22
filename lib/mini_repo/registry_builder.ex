@@ -1,4 +1,4 @@
-defmodule NimbleHex.RegistryBuilder do
+defmodule MiniRepo.RegistryBuilder do
   def build_full(repository, registry) do
     resources = %{
       "names" => build_names(repository, registry),

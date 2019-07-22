@@ -1,4 +1,4 @@
-defmodule NimbleHex.Utils do
+defmodule MiniRepo.Utils do
   @moduledoc false
 
   def unpack_tarball(tarball) do

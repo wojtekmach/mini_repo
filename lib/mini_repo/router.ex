@@ -1,9 +1,9 @@
-defmodule NimbleHex.Router do
+defmodule MiniRepo.Router do
   @moduledoc false
   use Plug.Router
 
   plug Plug.Parsers,
-    parsers: [NimbleHex.HexErlangParser],
+    parsers: [MiniRepo.HexErlangParser],
     pass: ["*/*"]
 
   plug :match
@@ -11,7 +11,7 @@ defmodule NimbleHex.Router do
 
   def call(conn, opts) do
     conn =
-      Plug.Conn.put_private(conn, :nimble_hex, %{
+      Plug.Conn.put_private(conn, :mini_repo, %{
         url: opts[:url],
         repositories: opts[:repositories]
       })
@@ -23,7 +23,7 @@ defmodule NimbleHex.Router do
     {:ok, tarball, conn} = Plug.Conn.read_body(conn, length: :infinity)
     repo = repo!(conn, repo)
 
-    case NimbleHex.Repository.Server.publish(repo, tarball) do
+    case MiniRepo.Repository.Server.publish(repo, tarball) do
       :ok ->
         body = %{"url" => opts[:url]}
         body = :erlang.term_to_binary(body)
@@ -40,7 +40,7 @@ defmodule NimbleHex.Router do
   delete "/api/repos/:repo/packages/:name/releases/:version" do
     repo = repo!(conn, repo)
 
-    case NimbleHex.Repository.Server.revert(repo, name, version) do
+    case MiniRepo.Repository.Server.revert(repo, name, version) do
       :ok -> send_resp(conn, 204, "")
       {:error, _} = error -> send_resp(conn, 400, inspect(error))
     end
@@ -49,7 +49,7 @@ defmodule NimbleHex.Router do
   post "/api/repos/:repo/packages/:name/releases/:version/retire" do
     repo = repo!(conn, repo)
 
-    case NimbleHex.Repository.Server.retire(repo, name, version, conn.body_params) do
+    case MiniRepo.Repository.Server.retire(repo, name, version, conn.body_params) do
       :ok -> send_resp(conn, 201, "")
       {:error, _} = error -> send_resp(conn, 400, inspect(error))
     end
@@ -58,7 +58,7 @@ defmodule NimbleHex.Router do
   delete "/api/repos/:repo/packages/:name/releases/:version/retire" do
     repo = repo!(conn, repo)
 
-    case NimbleHex.Repository.Server.unretire(repo, name, version) do
+    case MiniRepo.Repository.Server.unretire(repo, name, version) do
       :ok -> send_resp(conn, 201, "")
       {:error, _} = error -> send_resp(conn, 400, inspect(error))
     end
@@ -68,7 +68,7 @@ defmodule NimbleHex.Router do
     {:ok, docs_tarball, conn} = Plug.Conn.read_body(conn, length: :infinity)
     repo = String.to_atom(repo)
 
-    case NimbleHex.Repository.Server.publish_docs(repo, name, version, docs_tarball) do
+    case MiniRepo.Repository.Server.publish_docs(repo, name, version, docs_tarball) do
       :ok -> send_resp(conn, 201, "")
       {:error, _} = error -> send_resp(conn, 400, inspect(error))
     end
@@ -79,7 +79,7 @@ defmodule NimbleHex.Router do
   end
 
   defp repo!(conn, repo) do
-    allowed_repos = conn.private.nimble_hex.repositories
+    allowed_repos = conn.private.mini_repo.repositories
 
     if repo in allowed_repos do
       String.to_atom(repo)

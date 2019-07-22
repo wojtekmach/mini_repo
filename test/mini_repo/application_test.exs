@@ -1,10 +1,10 @@
-defmodule NimbleHex.ApplicationTest do
+defmodule MiniRepo.ApplicationTest do
   use ExUnit.Case
 
   setup do
     File.rm_rf!("tmp")
-    File.rm_rf!(Path.join(Application.app_dir(:nimble_hex), "data"))
-    Application.ensure_all_started(:nimble_hex)
+    File.rm_rf!(Path.join(Application.app_dir(:mini_repo), "data"))
+    Application.ensure_all_started(:mini_repo)
     :ok
   end
 
@@ -12,7 +12,7 @@ defmodule NimbleHex.ApplicationTest do
     # TODO: change test so that mirror is not started?
 
     [test_repo: test_repo, test_repo_mirror: _] =
-      Application.fetch_env!(:nimble_hex, :repositories)
+      Application.fetch_env!(:mini_repo, :repositories)
 
     config = %{
       :hex_core.default_config()
@@ -61,8 +61,8 @@ defmodule NimbleHex.ApplicationTest do
     assert packages == [%{name: "foo", retired: [], versions: ["1.0.0"]}]
 
     # restart application, load registry from backup
-    Application.stop(:nimble_hex)
-    Application.start(:nimble_hex)
+    Application.stop(:mini_repo)
+    Application.start(:mini_repo)
 
     {:ok, {200, _, packages}} = :hex_repo.get_names(config)
     assert packages == [%{name: "foo"}]
@@ -75,12 +75,12 @@ defmodule NimbleHex.ApplicationTest do
     {:ok, {200, _, packages}} = :hex_repo.get_names(config)
     assert packages == []
   after
-    Application.stop(:nimble_hex)
+    Application.stop(:mini_repo)
   end
 
   test "mirror" do
     [test_repo: test_repo, test_repo_mirror: _] =
-      Application.fetch_env!(:nimble_hex, :repositories)
+      Application.fetch_env!(:mini_repo, :repositories)
 
     config = %{
       :hex_core.default_config()
@@ -124,12 +124,12 @@ defmodule NimbleHex.ApplicationTest do
     assert packages == [%{name: "foo", retired: [], versions: ["1.0.0", "1.1.0"]}]
     {:ok, {200, _, _}} = :hex_repo.get_tarball(mirror_config, "foo", "1.1.0")
   after
-    Application.stop(:nimble_hex)
+    Application.stop(:mini_repo)
   end
 
   test "via hex" do
     [test_repo: test_repo, test_repo_mirror: _] =
-      Application.fetch_env!(:nimble_hex, :repositories)
+      Application.fetch_env!(:mini_repo, :repositories)
 
     foo_path = Path.join(["tmp", "foo"])
     File.mkdir_p!(foo_path)
@@ -213,7 +213,7 @@ defmodule NimbleHex.ApplicationTest do
       assert out =~ "* foo (Hex package) (mix)\n  locked at 1.0.0 (test_repo/foo)"
     end)
   after
-    Application.stop(:nimble_hex)
+    Application.stop(:mini_repo)
   end
 
   # TODO: move to hex_core

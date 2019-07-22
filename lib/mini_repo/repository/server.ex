@@ -1,8 +1,8 @@
-defmodule NimbleHex.Repository.Server do
+defmodule MiniRepo.Repository.Server do
   @moduledoc false
 
   use Agent
-  alias NimbleHex.RegistryBackup
+  alias MiniRepo.RegistryBackup
 
   def start_link(options) do
     {repository, options} = Keyword.pop(options, :repository)
@@ -10,7 +10,7 @@ defmodule NimbleHex.Repository.Server do
   end
 
   def publish(pid, tarball) do
-    with {:ok, {package_name, release}} <- NimbleHex.Utils.unpack_tarball(tarball) do
+    with {:ok, {package_name, release}} <- MiniRepo.Utils.unpack_tarball(tarball) do
       Agent.update(pid, fn repository ->
         :ok =
           store_put(
@@ -110,7 +110,7 @@ defmodule NimbleHex.Repository.Server do
 
   # defp build_full_registry(repository, repo) do
   #   packages = Map.fetch!(repository.registry, repo)
-  #   resources = NimbleHex.RegistryBuilder.build_full(repository, packages)
+  #   resources = MiniRepo.RegistryBuilder.build_full(repository, packages)
 
   #   for {name, content} <- resources do
   #     store_put(repository, ["repos", repo, name], content)
@@ -119,7 +119,7 @@ defmodule NimbleHex.Repository.Server do
 
   defp build_partial_registry(repository, package_name) do
     resources =
-      NimbleHex.RegistryBuilder.build_partial(repository, repository.registry, package_name)
+      MiniRepo.RegistryBuilder.build_partial(repository, repository.registry, package_name)
 
     for {name, content} <- resources do
       store_put(repository, ["repos", repository.name, name], content)
@@ -128,10 +128,10 @@ defmodule NimbleHex.Repository.Server do
 
   defp store_put(repository, name, content) do
     options = []
-    :ok = NimbleHex.Store.put(repository.store, name, content, options)
+    :ok = MiniRepo.Store.put(repository.store, name, content, options)
   end
 
   defp store_delete(repository, name) do
-    NimbleHex.Store.delete(repository.store, name)
+    MiniRepo.Store.delete(repository.store, name)
   end
 end

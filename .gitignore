@@ -20,6 +20,6 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-nimble_hex-*.tar
+mini_repo-*.tar
 
 /data

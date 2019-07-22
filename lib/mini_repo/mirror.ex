@@ -1,4 +1,4 @@
-defmodule NimbleHex.Mirror do
+defmodule MiniRepo.Mirror do
   @moduledoc """
   A mirror is a read-only repository that is kept in sync with another (upstream) repository.
 
@@ -32,7 +32,7 @@ defmodule NimbleHex.Mirror do
 
   To set up a mirror, add it as any other repository:
 
-      config :nimble_hex,
+      config :mini_repo,
         repositories: [
           a_mirror: [
             upstream_name: "some_mirror",

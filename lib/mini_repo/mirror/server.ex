@@ -1,9 +1,9 @@
-defmodule NimbleHex.Mirror.Server do
+defmodule MiniRepo.Mirror.Server do
   @moduledoc false
 
   use GenServer
   require Logger
-  alias NimbleHex.{RegistryDiff, RegistryBackup}
+  alias MiniRepo.{RegistryDiff, RegistryBackup}
 
   def start_link(options) do
     {mirror, options} = Keyword.pop(options, :mirror)
@@ -24,7 +24,7 @@ defmodule NimbleHex.Mirror.Server do
   @impl true
   def handle_info(:sync, mirror) do
     case sync(mirror) do
-      {:ok, %NimbleHex.Mirror{} = new_mirror} ->
+      {:ok, %MiniRepo.Mirror{} = new_mirror} ->
         schedule_sync(new_mirror)
         {:noreply, new_mirror}
 
@@ -77,7 +77,7 @@ defmodule NimbleHex.Mirror.Server do
   defp sync_created_packages(mirror, config, diff) do
     stream =
       Task.Supervisor.async_stream_nolink(
-        NimbleHex.TaskSupervisor,
+        MiniRepo.TaskSupervisor,
         diff.packages.created,
         fn name ->
           {:ok, releases} = sync_package(mirror, config, name)
@@ -107,7 +107,7 @@ defmodule NimbleHex.Mirror.Server do
 
   defp sync_releases(mirror, config, diff) do
     stream =
-      Task.Supervisor.async_stream_nolink(NimbleHex.TaskSupervisor, diff.releases, fn {name, map} ->
+      Task.Supervisor.async_stream_nolink(MiniRepo.TaskSupervisor, diff.releases, fn {name, map} ->
         {:ok, releases} = sync_package(mirror, config, name)
 
         for version <- map.created do
@@ -214,15 +214,15 @@ defmodule NimbleHex.Mirror.Server do
   end
 
   defp user_agent_fragment() do
-    {:ok, vsn} = :application.get_key(:nimble_hex, :vsn)
-    "nimble_hex/#{vsn}"
+    {:ok, vsn} = :application.get_key(:mini_repo, :vsn)
+    "mini_repo/#{vsn}"
   end
 
   defp store_put(mirror, path, contents) do
-    NimbleHex.Store.put(mirror.store, ["repos", mirror.name] ++ List.wrap(path), contents)
+    MiniRepo.Store.put(mirror.store, ["repos", mirror.name] ++ List.wrap(path), contents)
   end
 
   defp store_delete(repository, name) do
-    NimbleHex.Store.delete(repository.store, name)
+    MiniRepo.Store.delete(repository.store, name)
   end
 end

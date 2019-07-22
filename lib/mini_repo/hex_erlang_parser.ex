@@ -1,4 +1,4 @@
-defmodule NimbleHex.HexErlangParser do
+defmodule MiniRepo.HexErlangParser do
   @moduledoc false
 
   @behaviour Plug.Parsers

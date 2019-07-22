@@ -1,10 +1,10 @@
-# NimbleHex
+# MiniRepo
 
-NimbleHex allows self-hosting of Hex packages.
+MiniRepo allows self-hosting of Hex packages.
 
 Features:
 
-  * Pluggable storage. NimbleHex ships with following adapters:
+  * Pluggable storage. MiniRepo ships with following adapters:
 
       * Local filesystem
 
@@ -16,7 +16,7 @@ Features:
 
   * Hosting of multiple repositories and mirrors
 
-    NimbleHex exposes following URLs for API and repository access:
+    MiniRepo exposes following URLs for API and repository access:
 
       * http://some_url/api/<repo>
 
@@ -28,8 +28,8 @@ Learn more about Hex specifications [here](https://github.com/hexpm/specificatio
 
 Clone and install dependencies:
 
-    git clone git@github.com:wojtekmach/nimble_hex.git
-    cd nimble_hex
+    git clone git@github.com:wojtekmach/mini_repo.git
+    cd mini_repo
     mix deps.get
 
 Start a development server:
@@ -49,7 +49,7 @@ Make sure to also read "Deployment with releases" section below releases" sectio
 
 ## Usage
 
-Once you have the NimbleHex server running, here is how you can use it with Mix or Rebar3.
+Once you have the MiniRepo server running, here is how you can use it with Mix or Rebar3.
 
 ### Usage with Mix
 
@@ -89,7 +89,7 @@ Make following changes to that package's `mix.exs`:
     [
       api_url: "http://localhost:4000/api/repos/test_repo",
 
-      # client requires an API key, but since NimbleHex does not
+      # client requires an API key, but since MiniRepo does not
       # support authentication, you can put any key here
       api_key: "does-not-matter"
     ]
@@ -104,7 +104,7 @@ Finally, let's use this package from another project.
 
 First, configure Hex to use the custom repository:
 
-    $ cd /path/to/nimble_hex
+    $ cd /path/to/mini_repo
     $ mix hex.repo add test_repo http://localhost:4000/repos/test_repo --public-key priv/test_repo_public.pem
 
 Now, create a new Mix project:
@@ -146,7 +146,7 @@ Now, let's configure Rebar3 to use our custom repo:
     #{
       name => <<"test_repo">>,
 
-      %% client requires an API key, but since NimbleHex does not
+      %% client requires an API key, but since MiniRepo does not
       %% support authentication, you can put any key here
       api_key => <<"does-not-matter">>,
 
@@ -165,19 +165,19 @@ And publish the package specifying the repo:
 
 ### Deployment with releases
 
-It's recommended to deploy NimbleHex with Elixir releases.
+It's recommended to deploy MiniRepo with Elixir releases.
 
 Let's now assemble the release locally:
 
     $ MIX_ENV=prod mix release
-    * assembling nimble_hex-0.1.0 on MIX_ENV=prod
+    * assembling mini_repo-0.1.0 on MIX_ENV=prod
     (...)
 
 And start it:
 
     PORT=4000 \
-    NIMBLE_HEX_URL=http://localhost:4000 \
-    _build/prod/rel/nimble_hex/bin/nimble_hex start
+    MINI_REPO_URL=http://localhost:4000 \
+    _build/prod/rel/mini_repo/bin/mini_repo start
 
 As you can see, some configuration can be set by adjusting system environment variables,
 see [`config/releases.exs`](config/releases.exs)
@@ -189,20 +189,20 @@ information on Elixir releases.
 
 See following modules documentation to learn more about given feature:
 
-* [`NimbleHex.Store.Local`](lib/nimble_hex/store/local.ex)
+* [`MiniRepo.Store.Local`](lib/mini_repo/store/local.ex)
 
-* [`NimbleHex.Store.S3`](lib/nimble_hex/store/s3.ex)
+* [`MiniRepo.Store.S3`](lib/mini_repo/store/s3.ex)
 
-* [`NimbleHex.Mirror`](lib/nimble_hex/mirror.ex)
+* [`MiniRepo.Mirror`](lib/mini_repo/mirror.ex)
 
 ## Contributing
 
-The goal of NimbleHex is to provide a minimal server that implements Hex specifications. Why
+The goal of MiniRepo is to provide a minimal server that implements Hex specifications. Why
 minimal? By keeping the project focused on bare minimum we hope it's easy to understand and
 serves as a good starting point for a more complete solution that makes sense in a given
 organization. A production grade system should include infrastructure for monitoring, backups,
 SSL, and more, not to mention features like user management, SSO and such, but that's out of
-the scope of NimbleHex project.
+the scope of MiniRepo project.
 
 We welcome anyone to contribute to the project, especially around documentation and guides,
 but features specific to narrow set of users likely won't be accepted. For a complete and

@@ -1,4 +1,4 @@
-defmodule NimbleHex.Repository do
+defmodule MiniRepo.Repository do
   @moduledoc false
 
   @derive {Inspect, only: [:name, :public_key, :store, :registry]}

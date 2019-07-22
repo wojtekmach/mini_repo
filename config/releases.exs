@@ -1,22 +1,22 @@
 import Config
 
-config :nimble_hex,
+config :mini_repo,
   port: String.to_integer(System.get_env("PORT", "4000")),
-  url: System.get_env("NIMBLE_HEX_URL", "http://localhost:4000")
+  url: System.get_env("MINI_REPO_URL", "http://localhost:4000")
 
-repo_name = String.to_atom(System.get_env("NIMBLE_HEX_REPO_NAME", "test_repo"))
+repo_name = String.to_atom(System.get_env("MINI_REPO_REPO_NAME", "test_repo"))
 
 private_key =
-  System.get_env("NIMBLE_HEX_PRIVATE_KEY") ||
-    File.read!(Path.join([:code.priv_dir(:nimble_hex), "test_repo_private.pem"]))
+  System.get_env("MINI_REPO_PRIVATE_KEY") ||
+    File.read!(Path.join([:code.priv_dir(:mini_repo), "test_repo_private.pem"]))
 
 public_key =
-  System.get_env("NIMBLE_HEX_PUBLIC_KEY") ||
-    File.read!(Path.join([:code.priv_dir(:nimble_hex), "test_repo_public.pem"]))
+  System.get_env("MINI_REPO_PUBLIC_KEY") ||
+    File.read!(Path.join([:code.priv_dir(:mini_repo), "test_repo_public.pem"]))
 
-store = {NimbleHex.Store.Local, root: {:nimble_hex, "data"}}
+store = {MiniRepo.Store.Local, root: {:mini_repo, "data"}}
 
-config :nimble_hex,
+config :mini_repo,
   repositories: [
     "#{repo_name}": [
       private_key: private_key,

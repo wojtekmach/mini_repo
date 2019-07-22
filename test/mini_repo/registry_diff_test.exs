@@ -1,6 +1,6 @@
-defmodule NimbleHex.RegistryDiffTest do
+defmodule MiniRepo.RegistryDiffTest do
   use ExUnit.Case, async: true
-  import NimbleHex.RegistryDiff
+  import MiniRepo.RegistryDiff
 
   describe "diff/2" do
     test "empty diff" do

@@ -1,9 +1,9 @@
-defmodule NimbleHex.MixProject do
+defmodule MiniRepo.MixProject do
   use Mix.Project
 
   def project() do
     [
-      app: :nimble_hex,
+      app: :mini_repo,
       version: "0.1.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule NimbleHex.MixProject do
   def application() do
     [
       extra_applications: [:crypto, :inets, :ssl],
-      mod: {NimbleHex.Application, []}
+      mod: {MiniRepo.Application, []}
     ]
   end
 

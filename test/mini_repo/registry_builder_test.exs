@@ -1,9 +1,9 @@
-defmodule NimbleHex.RegistryBuilderTest do
+defmodule MiniRepo.RegistryBuilderTest do
   use ExUnit.Case, async: true
-  alias NimbleHex.{RegistryBuilder, Repository}
+  alias MiniRepo.{RegistryBuilder, Repository}
 
   setup do
-    {private_key, public_key} = NimbleHex.Utils.generate_keys()
+    {private_key, public_key} = MiniRepo.Utils.generate_keys()
 
     repository = %Repository{
       name: "test",
