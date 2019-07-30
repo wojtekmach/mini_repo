@@ -136,7 +136,8 @@ Let's create a new package and publish it to our `test_repo` repository:
     $ rebar3 new lib baz
     $ cd baz
 
-Now, let's configure Rebar3 to use our custom repo:
+Now, let's configure Rebar3 to use our custom repo, put the following into your global rebar3
+configuration:
 
 ```erlang
 %% ~/.config/rebar3/rebar.config
@@ -151,7 +152,18 @@ Now, let's configure Rebar3 to use our custom repo:
       api_key => <<"does-not-matter">>,
 
       api_url => <<"http://localhost:4000/api">>,
-      api_repository => <<"test_repo">>
+      api_repository => <<"test_repo">>,
+
+      repo_url => <<"http://localhost:4000/repos/test_repo">>,
+      repo_organization => undefined,
+      repo_public_key => <<"-----BEGIN RSA PUBLIC KEY-----
+MIIBCgKCAQEAxfUmzcCs9+rHvGiTvethBN0dVNgvJKss2z48mMjgOd9owiBMvHWQ
+wBSncGgZHbahVJbz3bRfvKVAi1mgWx1233MlWJHR+qc2iQyXKW35cYsUOJtGAgmM
+10kLvKhxKXdMgJASb02logFVuz2Ov3a/blHGDSqH6HCXok7tUY6ZwRIv7+zsQTga
+ttpaLngmgGA2vPUQjUHIDSR6+j65szripj7BLyzqfncCcZK0nKYalBkwcXbrOln0
+FucLkxYiy1saxxJlfHQ9W7j9YmjbZDDmSgnbJfi2/WpOgclptthYNA9+OYbz9peD
+X9EXqozUvq0yXdgoqOnUfzYTrFOHg/MIHQIDAQAB
+-----END RSA PUBLIC KEY-----">>
     }
   ]}
 ]}.
@@ -161,7 +173,27 @@ And publish the package specifying the repo:
 
     $ rebar3 hex publish -r test_repo
 
-**TODO** Finally, let's use this package from another project:
+Finally, let's use this package from another project:
+
+    $ rebar3 new lib qux
+    $ cd qux
+
+Add the dependency to the project's `rebar.config`:
+
+    {erl_opts, [debug_info]}.
+    {deps, [
+      {baz, "0.1.0"}
+    ]}.
+
+And make sure the dependecy was correctly resolved:
+
+    $ rebar3 deps
+    (...)
+    ===> Verifying dependencies...
+    baz (package 0.1.0)
+
+See Hex.pm guide on [publishing packages with Rebar3](https://hex.pm/docs/rebar3_publish) and
+[Rebar3 docs](https://www.rebar3.org/docs) for more information.
 
 ### Deployment with releases
 
