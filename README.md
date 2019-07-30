@@ -45,7 +45,7 @@ By default, the development server is configured with two repositories:
 
 Both repositories are configured to store files locally. See [`config/dev.exs`](config/dev.exs) for more information.
 
-Make sure to also read "Deployment with releases" section below releases" section below.
+Make sure to also read "Deployment with releases" section below.
 
 ## Usage
 
