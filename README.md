@@ -126,8 +126,9 @@ Since the development server includes a `hexpm_mirror` repo, let's try that too:
 
     $ HEX_MIRROR_URL=http://localhost:4000/repos/hexpm_mirror mix hex.package fetch decimal 1.8.0
 
-See [`mix help hex.config`](https://hexdocs.pm/hex/Mix.Tasks.Hex.Config.html) for more information
-about configuring your Hex installation.
+See Hex.pm guide on [publishing packages](https://hex.pm/docs/publish) and [Hex
+docs](https://hexdocs.pm/hex/Mix.Tasks.Hex.html), in particular [`mix help hex.config`](https://hexdocs.pm/hex/Mix.Tasks.Hex.Config.html),
+for more information.
 
 ### Usage with Rebar3
 
@@ -213,6 +214,11 @@ And start it:
 
 As you can see, some configuration can be set by adjusting system environment variables,
 see [`config/releases.exs`](config/releases.exs)
+
+**Warning**: MiniRepo by default has no authentication (for neither accessing nor publishing
+packages) and by default uses pre-generated public/private keys for repository signing.
+Make sure to generate your own public/private keys and consider adding authentication
+that makes sense in your organization.
 
 Also, see [`mix help release`](https://hexdocs.pm/mix/Mix.Tasks.Release.html?) for general
 information on Elixir releases.
