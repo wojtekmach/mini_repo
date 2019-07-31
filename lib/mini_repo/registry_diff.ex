@@ -51,6 +51,6 @@ defmodule MiniRepo.RegistryDiff do
   end
 
   defp sort_versions(list) do
-    Enum.sort(list, &Version.compare(&1, &2) == :lt)
+    Enum.sort(list, &(Version.compare(&1, &2) == :lt))
   end
 end

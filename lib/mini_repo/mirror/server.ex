@@ -56,7 +56,7 @@ defmodule MiniRepo.Mirror.Server do
             do: {name, Map.delete(map, :version)}
 
       diff = RegistryDiff.diff(mirror.registry, versions)
-      Logger.debug [inspect(__MODULE__), " diff: ", inspect(diff, pretty: true)]
+      Logger.debug([inspect(__MODULE__), " diff: ", inspect(diff, pretty: true)])
       created = sync_created_packages(mirror, config, diff)
       deleted = sync_deleted_packages(mirror, config, diff)
       updated = sync_releases(mirror, config, diff)
@@ -82,16 +82,18 @@ defmodule MiniRepo.Mirror.Server do
         fn name ->
           {:ok, releases} = sync_package(mirror, config, name)
 
-          Task.Supervisor.async_stream_nolink(
-            MiniRepo.TaskSupervisor,
-            releases,
-            fn release ->
-              :ok = sync_tarball(mirror, config, name, release.version)
-            end,
-            ordered: false
-          )
-          |> Stream.run()
+          stream =
+            Task.Supervisor.async_stream_nolink(
+              MiniRepo.TaskSupervisor,
+              releases,
+              fn release ->
+                :ok = sync_tarball(mirror, config, name, release.version)
+                release
+              end,
+              ordered: false
+            )
 
+          releases = for {:ok, release} <- stream, do: release
           {name, releases}
         end,
         ordered: false
