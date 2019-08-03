@@ -1,11 +1,8 @@
 FROM elixir:1.9-alpine as builder
 
-LABEL author "Emil Bostijancic <emil.bostijancic@gmail.com>"
-
 ENV MIX_ENV prod
-#ENV REPLACE_OS_VARS true
 
-RUN apk add --no-cache build-base git bash curl ca-certificates
+RUN apk add --no-cache build-base curl
 RUN mix local.hex --force
 RUN mix local.rebar --force
 RUN mkdir -p /mini_repo
@@ -24,7 +21,7 @@ RUN mix release
 
 FROM alpine:3.9
 
-RUN apk add --no-cache ncurses-libs openssl bash curl ca-certificates
+RUN apk add --no-cache ncurses-libs openssl
 
 COPY --from=builder /mini_repo/_build/prod/rel/mini_repo /app/
 
