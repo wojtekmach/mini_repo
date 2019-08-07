@@ -1,29 +1,44 @@
-FROM elixir:1.9-alpine as builder
+FROM elixir:1.9.1-alpine AS build
 
-ENV MIX_ENV prod
+# install build dependencies
+RUN apk add --update build-base
 
-RUN apk add --no-cache build-base curl
-RUN mix local.hex --force
-RUN mix local.rebar --force
-RUN mkdir -p /mini_repo
+# prepare build dir
+RUN mkdir /app
+WORKDIR /app
 
-WORKDIR /mini_repo
+# install hex + rebar
+RUN mix local.hex --force && \
+    mix local.rebar --force
 
-ADD config  ./config/
-ADD lib  ./lib/
-ADD priv ./priv/
-ADD rel ./rel/
+# set build ENV
+ENV MIX_ENV=prod
+
+# install mix dependencies
 COPY mix.exs mix.lock ./
-
+COPY config config
 RUN mix deps.get
+RUN mix deps.compile
+
+# build project
+COPY priv priv
+COPY lib lib
 RUN mix compile
+
+# build release
+COPY rel rel
 RUN mix release
 
-FROM alpine:3.9
+# prepare release image
+FROM alpine:3.9 AS app
+RUN apk add --update bash openssl
 
-RUN apk add --no-cache ncurses-libs openssl
+RUN mkdir /app
+WORKDIR /app
 
-COPY --from=builder /mini_repo/_build/prod/rel/mini_repo /app/
+COPY --from=build /app/_build/prod/rel/mini_repo ./
+RUN chown -R nobody: /app
+USER nobody
 
-ENTRYPOINT ["/app/bin/mini_repo"]
-CMD ["start"]
+ENV HOME=/app
+CMD ["/app/bin/mini_repo", "start"]
