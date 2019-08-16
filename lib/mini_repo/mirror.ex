@@ -14,6 +14,9 @@ defmodule MiniRepo.Mirror do
 
     * `:store` - repository storage
 
+    * `:sync_opts` - fetch package / release Task.Supervisor stream options. Provided options will be
+      merged with [ordered: false] option.
+
     * `:sync_interval` - how often to check mirrored repository for changes in milliseconds.
 
     * `:only` - if set, it is an allowed list of packages to mirror. If not set, we mirror all
@@ -59,6 +62,7 @@ defmodule MiniRepo.Mirror do
     :sync_interval,
     :only,
     :store,
-    registry: %{}
+    registry: %{},
+    sync_opts: []
   ]
 end

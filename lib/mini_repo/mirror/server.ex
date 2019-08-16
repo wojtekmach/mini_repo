@@ -75,6 +75,7 @@ defmodule MiniRepo.Mirror.Server do
   end
 
   defp sync_created_packages(mirror, config, diff) do
+    mirror_sync_opts = Keyword.merge([ordered: false], mirror.sync_opts)
     stream =
       Task.Supervisor.async_stream_nolink(
         MiniRepo.TaskSupervisor,
@@ -90,13 +91,13 @@ defmodule MiniRepo.Mirror.Server do
                 :ok = sync_tarball(mirror, config, name, release.version)
                 release
               end,
-              ordered: false
+              mirror_sync_opts
             )
 
           releases = for {:ok, release} <- stream, do: release
           {name, releases}
         end,
-        ordered: false
+        mirror_sync_opts
       )
 
     for {:ok, {name, releases}} <- stream, into: %{} do
@@ -125,7 +126,7 @@ defmodule MiniRepo.Mirror.Server do
           fn version ->
             :ok = sync_tarball(mirror, config, name, version)
           end,
-          ordered: false
+          Keyword.merge([ordered: false], mirror.sync_opts)
         )
         |> Stream.run()
 
