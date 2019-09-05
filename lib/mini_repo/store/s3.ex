@@ -5,7 +5,7 @@ defmodule MiniRepo.Store.S3 do
   ## Options
 
     * `:bucket` - the S3 bucket
-    * `:region` - the S3 region
+    * `:options` - the S3 request options
 
   ## Usage
 
@@ -19,7 +19,9 @@ defmodule MiniRepo.Store.S3 do
       store =
         {MiniRepo.Store.S3,
          bucket: System.fetch_env!("MINI_REPO_S3_BUCKET"),
-         region: System.fetch_env!("MINI_REPO_S3_REGION")}
+         options: [
+          region: System.fetch_env!("MINI_REPO_S3_REGION")]
+         }
 
   And configure your repositories with the given store, e.g.:
 
@@ -63,14 +65,14 @@ defmodule MiniRepo.Store.S3 do
 
   alias ExAws.S3
 
-  defstruct [:bucket, :region]
+  defstruct [:bucket, :options]
 
   @impl true
   def put(key, value, options, state) do
     key = Path.join(List.wrap(key))
     request = S3.put_object(state.bucket, key, value, options)
 
-    with {:ok, _} <- ExAws.request(request, region: state.region) do
+    with {:ok, _} <- ExAws.request(request, state.options) do
       :ok
     end
   end
@@ -80,7 +82,7 @@ defmodule MiniRepo.Store.S3 do
     key = Path.join(List.wrap(key))
     request = S3.get_object(state.bucket, key, options)
 
-    case ExAws.request(request, region: state.region) do
+    case ExAws.request(request, state.options) do
       {:ok, %{body: body}} ->
         {:ok, body}
 
@@ -97,7 +99,7 @@ defmodule MiniRepo.Store.S3 do
     key = Path.join(List.wrap(key))
     request = S3.delete_object(state.bucket, key, options)
 
-    with {:ok, _} <- ExAws.request(request, region: state.region) do
+    with {:ok, _} <- ExAws.request(request, state.options) do
       :ok
     end
   end
