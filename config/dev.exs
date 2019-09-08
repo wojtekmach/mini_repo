@@ -23,6 +23,7 @@ config :mini_repo,
 
       # 5min
       sync_interval: 5 * 60 * 1000,
+      sync_opts: [max_concurrency: 1],
 
       # https://hex.pm/docs/public_keys
       upstream_public_key: """
