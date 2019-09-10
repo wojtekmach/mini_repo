@@ -20,7 +20,7 @@ defmodule MiniRepo.Router do
   end
 
   post "/api/repos/:repo/publish" do
-    {:ok, tarball, conn} = Plug.Conn.read_body(conn, length: :infinity)
+    {:ok, tarball, conn} = read_tarball(conn)
     repo = repo!(conn, repo)
 
     case MiniRepo.Repository.Server.publish(repo, tarball) do
@@ -65,7 +65,7 @@ defmodule MiniRepo.Router do
   end
 
   post "/api/repos/:repo/packages/:name/releases/:version/docs" do
-    {:ok, docs_tarball, conn} = Plug.Conn.read_body(conn, length: :infinity)
+    {:ok, docs_tarball, conn} = read_tarball(conn)
     repo = String.to_atom(repo)
 
     case MiniRepo.Repository.Server.publish_docs(repo, name, version, docs_tarball) do
@@ -86,6 +86,19 @@ defmodule MiniRepo.Router do
     else
       raise ArgumentError,
             "#{inspect(repo)} is not allowed, allowed repos: #{inspect(allowed_repos)}"
+    end
+  end
+
+  defp read_tarball(conn, tarball \\ <<>>) do
+    case Plug.Conn.read_body(conn) do
+      {:more, partial, conn} ->
+        read_tarball(conn, tarball <> partial)
+
+      {:ok, body, conn} ->
+        {:ok, tarball <> body, conn}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end
