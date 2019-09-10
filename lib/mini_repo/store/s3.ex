@@ -5,7 +5,7 @@ defmodule MiniRepo.Store.S3 do
   ## Options
 
     * `:bucket` - the S3 bucket
-    * `:options` - the S3 request options
+    * `:options` - the S3 request options [(most options are listed in this module)](https://github.com/ex-aws/ex_aws/blob/master/lib/ex_aws/config.ex)
 
   ## Usage
 
