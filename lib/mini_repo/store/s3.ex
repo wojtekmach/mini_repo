@@ -20,7 +20,7 @@ defmodule MiniRepo.Store.S3 do
         {MiniRepo.Store.S3,
          bucket: System.fetch_env!("MINI_REPO_S3_BUCKET"),
          options: [
-          region: System.fetch_env!("MINI_REPO_S3_REGION")]
+           region: System.fetch_env!("MINI_REPO_S3_REGION")]
          }
 
   And configure your repositories with the given store, e.g.:
