@@ -82,7 +82,7 @@ defmodule MiniRepo.Router do
     allowed_repos = conn.private.mini_repo.repositories
 
     if repo in allowed_repos do
-      String.to_atom(repo)
+      String.to_existing_atom(repo)
     else
       raise ArgumentError,
             "#{inspect(repo)} is not allowed, allowed repos: #{inspect(allowed_repos)}"
