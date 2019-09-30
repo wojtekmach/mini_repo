@@ -65,8 +65,8 @@ defmodule MiniRepo.Router do
   end
 
   post "/api/repos/:repo/packages/:name/releases/:version/docs" do
+    repo = repo!(conn, repo)
     {:ok, docs_tarball, conn} = read_tarball(conn)
-    repo = String.to_atom(repo)
 
     case MiniRepo.Repository.Server.publish_docs(repo, name, version, docs_tarball) do
       :ok -> send_resp(conn, 201, "")
