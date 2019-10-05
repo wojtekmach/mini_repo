@@ -2,9 +2,32 @@ defmodule MiniRepo.Utils do
   @moduledoc false
 
   def unpack_tarball(tarball) do
-    with {:ok, result} <- :hex_tarball.unpack(tarball, :memory) do
+    with {:ok, result} <- :hex_tarball.unpack(tarball, :memory),
+         :ok <- validate_metadata(result.metadata) do
       %{checksum: checksum, metadata: metadata} = result
       {:ok, {metadata["name"], build_release(metadata, checksum)}}
+    end
+  end
+
+  # TODO: move metadata validations to hex_core
+  defp validate_metadata(metadata) do
+    with :ok <- validate_name(metadata) do
+      validate_version(metadata)
+    end
+  end
+
+  defp validate_name(metadata) do
+    if metadata["name"] =~ ~r/^[a-z]\w*$/ do
+      :ok
+    else
+      {:error, :invalid_name}
+    end
+  end
+
+  defp validate_version(metadata) do
+    case Version.parse(metadata["version"]) do
+      {:ok, _} -> :ok
+      :error -> {:error, :invalid_version}
     end
   end
 
