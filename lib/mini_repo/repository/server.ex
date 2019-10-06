@@ -13,11 +13,7 @@ defmodule MiniRepo.Repository.Server do
     with {:ok, {package_name, release}} <- MiniRepo.Utils.unpack_tarball(tarball) do
       Agent.update(pid, fn repository ->
         :ok =
-          store_put(
-            repository,
-            ["repos", repository.name, "tarballs", "#{package_name}-#{release.version}.tar"],
-            tarball
-          )
+          store_put(repository, tarball_path(repository, package_name, release.version), tarball)
 
         update_registry(repository, package_name, fn registry ->
           Map.update(registry, package_name, [release], &[release | &1])
@@ -31,14 +27,7 @@ defmodule MiniRepo.Repository.Server do
       update_registry(repository, package_name, fn registry ->
         case Map.fetch!(registry, package_name) do
           [%{version: ^version}] ->
-            :ok =
-              store_delete(repository, [
-                "repos",
-                repository.name,
-                "tarballs",
-                "#{package_name}-#{version}.tar"
-              ])
-
+            :ok = store_delete(repository, tarball_path(repository, package_name, version))
             Map.delete(registry, package_name)
 
           _ ->
@@ -48,6 +37,10 @@ defmodule MiniRepo.Repository.Server do
         end
       end)
     end)
+  end
+
+  defp tarball_path(repository, package_name, version) do
+    ["repos", repository.name, "tarballs", "#{package_name}-#{version}.tar"]
   end
 
   def retire(pid, package_name, version, params) do
