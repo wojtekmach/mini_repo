@@ -9,5 +9,6 @@ defmodule MiniRepo.Endpoint do
     at: "/repos",
     from: {:mini_repo, "data/repos"}
 
-  plug MiniRepo.Router, builder_opts()
+  plug MiniRepo.APIAuth
+  plug MiniRepo.APIRouter, builder_opts()
 end

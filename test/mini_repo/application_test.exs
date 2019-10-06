@@ -20,6 +20,7 @@ defmodule MiniRepo.ApplicationTest do
         repo_url: "http://localhost:4001/repos/test_repo",
         repo_public_key: test_repo[:public_key],
         # for publishing
+        api_key: "secret",
         api_url: "http://localhost:4001/api/repos/test_repo"
     }
 
@@ -32,6 +33,9 @@ defmodule MiniRepo.ApplicationTest do
     {:ok, {tarball, checksum}} = :hex_tarball.create(metadata, files)
     {:ok, {200, _, %{"url" => url}}} = :hex_api_release.publish(config, tarball)
     assert url == "http://localhost:4001"
+
+    bad_auth_config = %{config | api_key: "bad"}
+    {:ok, {401, _, "unauthorized"}} = :hex_api_release.publish(bad_auth_config, tarball)
 
     {:ok, {200, _, packages}} = :hex_repo.get_names(config)
     assert packages == [%{name: "foo"}]
@@ -88,6 +92,7 @@ defmodule MiniRepo.ApplicationTest do
         repo_url: "http://localhost:4001/repos/test_repo",
         repo_public_key: test_repo[:public_key],
         # for publishing
+        api_key: "secret",
         api_url: "http://localhost:4001/api/repos/test_repo"
     }
 
@@ -150,7 +155,7 @@ defmodule MiniRepo.ApplicationTest do
           ],
           hex: [
             api_url: "http://localhost:4001/api/repos/test_repo",
-            api_key: "does-not-matter"
+            api_key: "secret"
           ]
         ]
       end
@@ -184,7 +189,7 @@ defmodule MiniRepo.ApplicationTest do
           ],
           hex: [
             api_url: "http://localhost:4001/api/repos/test_repo",
-            api_key: "does-not-matter"
+            api_key: "secret"
           ],
           deps: [
             {:foo, "~> 1.0", repo: "test_repo"}
@@ -225,7 +230,8 @@ defmodule MiniRepo.ApplicationTest do
   # TODO: move to hex_core
   defp publish_docs(config, name, version, body) do
     url = api_url(config, "/packages/#{name}/releases/#{version}/docs")
-    :hex_http.request(config, :post, url, %{}, body)
+    headers = %{"authorization" => config.api_key}
+    :hex_http.request(config, :post, url, headers, body)
   end
 
   defp repo_url(config, path) do

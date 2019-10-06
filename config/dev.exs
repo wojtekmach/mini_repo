@@ -7,6 +7,7 @@ config :mini_repo,
 store = {MiniRepo.Store.Local, root: {:mini_repo, "data"}}
 
 config :mini_repo,
+  auth_token: "secret",
   repositories: [
     test_repo: [
       private_key: File.read!(Path.expand("../priv/test_repo_private.pem", __DIR__)),

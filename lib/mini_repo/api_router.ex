@@ -1,4 +1,4 @@
-defmodule MiniRepo.Router do
+defmodule MiniRepo.APIRouter do
   @moduledoc false
   use Plug.Router
 

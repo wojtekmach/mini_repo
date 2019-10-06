@@ -88,10 +88,8 @@ Make following changes to that package's `mix.exs`:
   defp hex() do
     [
       api_url: "http://localhost:4000/api/repos/test_repo",
-
-      # client requires an API key, but since MiniRepo does not
-      # support authentication, you can put any key here
-      api_key: "does-not-matter"
+      # make sure to change it, see `auth_token` in config/releases.exs
+      api_key: "secret"
     ]
   end
 ```
@@ -148,10 +146,8 @@ configuration:
     #{
       name => <<"test_repo">>,
 
-      %% client requires an API key, but since MiniRepo does not
-      %% support authentication, you can put any key here
-      api_key => <<"does-not-matter">>,
-
+      %% make sure to change it, see `auth_token` in config/releases.exs
+      api_key => <<"secret">>,
       api_url => <<"http://localhost:4000/api/repos/test_repo">>,
       api_repository => undefined,
 
@@ -210,12 +206,13 @@ And start it:
 
     PORT=4000 \
     MINI_REPO_URL=http://localhost:4000 \
+    MINI_REPO_AUTH_TOKEN=secret \
     _build/prod/rel/mini_repo/bin/mini_repo start
 
 As you can see, some configuration can be set by adjusting system environment variables,
 see [`config/releases.exs`](config/releases.exs)
 
-**Warning**: MiniRepo by default has no authentication and by default uses pre-generated
+**Warning**: MiniRepo by default has very basic authorization uses pre-generated
 public/private keys for repository signing.
 Make sure to generate your own public/private keys and consider adding authentication
 that makes sense in your organization.

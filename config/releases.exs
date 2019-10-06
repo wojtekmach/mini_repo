@@ -14,9 +14,22 @@ public_key =
   System.get_env("MINI_REPO_PUBLIC_KEY") ||
     File.read!(Path.join([:code.priv_dir(:mini_repo), "test_repo_public.pem"]))
 
+auth_token =
+  System.get_env("MINI_REPO_AUTH_TOKEN") ||
+    raise """
+    Environment variable MINI_REPO_AUTH_TOKEN must be set.
+
+    You can generate secret e.g. with this:
+
+        iex> length = 32
+        iex> :crypto.strong_rand_bytes(length) |> Base.encode64 |> binary_part(0, length)
+        "Xyf..."
+    """
+
 store = {MiniRepo.Store.Local, root: {:mini_repo, "data"}}
 
 config :mini_repo,
+  auth_token: System.fetch_env!("MINI_REPO_AUTH_TOKEN"),
   repositories: [
     "#{repo_name}": [
       private_key: private_key,
