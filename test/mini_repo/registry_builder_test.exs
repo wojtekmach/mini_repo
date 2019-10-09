@@ -39,8 +39,8 @@ defmodule MiniRepo.RegistryBuilderTest do
     %{
       "names" => signed_names,
       "versions" => signed_versions,
-      "packages/foo" => signed_package_foo,
-      "packages/bar" => signed_package_bar
+      ["packages", "foo"] => signed_package_foo,
+      ["packages", "bar"] => signed_package_bar
     } = RegistryBuilder.build_full(repository, registry)
 
     assert RegistryBuilder.decode_names(repository, signed_names) ==
@@ -104,7 +104,7 @@ defmodule MiniRepo.RegistryBuilderTest do
     %{
       "names" => signed_names,
       "versions" => signed_versions,
-      "packages/foo" => signed_package_foo
+      ["packages", "foo"] => signed_package_foo
     } = RegistryBuilder.build_partial(repository, registry, "foo")
 
     assert {:ok, _} = RegistryBuilder.decode_names(repository, signed_names)

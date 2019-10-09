@@ -6,7 +6,7 @@ defmodule MiniRepo.RegistryBuilder do
     }
 
     for {name, releases} <- registry, into: resources do
-      {"packages/#{name}", build_package(repository, name, releases)}
+      {["packages", name], build_package(repository, name, releases)}
     end
   end
 
@@ -18,7 +18,7 @@ defmodule MiniRepo.RegistryBuilder do
 
     case Map.fetch(registry, name) do
       {:ok, releases} ->
-        Map.put(resources, "packages/#{name}", build_package(repository, name, releases))
+        Map.put(resources, ["packages", name], build_package(repository, name, releases))
 
       # release is being reverted
       :error ->
