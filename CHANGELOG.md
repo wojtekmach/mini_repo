@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## HEAD
+## v0.2.0 (2019-10-09)
 
 * Add simple auth
 * Validate package metadata on publishing
