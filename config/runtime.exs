@@ -1,3 +1,10 @@
+# We use a custom config/runtime.exs (instead of default config/releases.exs) file so that when
+# running in a Docker container we can easily mount volume to overwrite the config (without
+# changing the docker image):
+#
+#     docker run -v $PWD/some_config:/app/config mini_test:latest
+#
+
 import Config
 
 config :mini_repo,
@@ -26,7 +33,8 @@ auth_token =
         "Xyf..."
     """
 
-store = {MiniRepo.Store.Local, root: {:mini_repo, "data"}}
+root = System.get_env("MINI_REPO_STORE_ROOT") || {:mini_repo, "data"}
+store = {MiniRepo.Store.Local, root: root}
 
 config :mini_repo,
   auth_token: System.fetch_env!("MINI_REPO_AUTH_TOKEN"),

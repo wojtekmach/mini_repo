@@ -12,7 +12,7 @@ defmodule MiniRepo.Store.S3 do
       
   ## Usage
 
-  Add to `config/releases.exs`:
+  Add to `config/runtime.exs`:
 
       config :ex_aws,
         access_key_id: System.fetch_env!("MINI_REPO_S3_ACCESS_KEY_ID"),

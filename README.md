@@ -88,7 +88,7 @@ Make following changes to that package's `mix.exs`:
   defp hex() do
     [
       api_url: "http://localhost:4000/api/repos/test_repo",
-      # make sure to change it, see `auth_token` in config/releases.exs
+      # make sure to change it, see `auth_token` in config/runtime.exs
       api_key: "secret"
     ]
   end
@@ -146,7 +146,7 @@ configuration:
     #{
       name => <<"test_repo">>,
 
-      %% make sure to change it, see `auth_token` in config/releases.exs
+      %% make sure to change it, see `auth_token` in config/runtime.exs
       api_key => <<"secret">>,
       api_url => <<"http://localhost:4000/api/repos/test_repo">>,
       api_repository => undefined,
@@ -210,15 +210,34 @@ And start it:
     _build/prod/rel/mini_repo/bin/mini_repo start
 
 As you can see, some configuration can be set by adjusting system environment variables,
-see [`config/releases.exs`](config/releases.exs)
-
-**Warning**: MiniRepo by default has very basic authorization uses pre-generated
-public/private keys for repository signing.
-Make sure to generate your own public/private keys and consider adding authentication
-that makes sense in your organization.
+see [`config/runtime.exs`](config/runtime.exs)
 
 Also, see [`mix help release`](https://hexdocs.pm/mix/Mix.Tasks.Release.html?) for general
 information on Elixir releases.
+
+**Warning**: Make sure to generate your own private/public key for signing, an auth token,
+and add additional authentication that makes sense in your organization.
+
+### Deployment with Docker
+
+MiniRepo ships with a [`Dockerfile`](Dockerfile) that you may use to build your Docker container.
+
+You may also use a published Docker image
+[`wojtekmach/mini_repo:latest`](https://hub.docker.com/r/wojtekmach/mini_repo) like this:
+
+    docker run \
+      -e MINI_REPO_AUTH_TOKEN=secret \
+      -e MINI_REPO_STORE_ROOT=/data \
+      -v $PWD/data:/data \
+      -v $PWD/config:/app/config \
+      -p 4000:4000 \
+      wojtekmach/mini_repo:latest
+
+Note, we mount `data` volume so that repository data is persisted between container runs. We mount
+`config` volume so that we can adjust the [`config/runtime.exs`](config/runtime.exs) file.
+
+**Warning**: Make sure to generate your own private/public key for signing, an auth token,
+and add additional authentication that makes sense in your organization.
 
 ## More information
 
