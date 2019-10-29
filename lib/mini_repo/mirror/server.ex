@@ -119,26 +119,33 @@ defmodule MiniRepo.Mirror.Server do
   end
 
   defp sync_releases(mirror, config, diff) do
+    mirror_sync_opts = Keyword.merge(@default_sync_opts, mirror.sync_opts)
+
     stream =
-      Task.Supervisor.async_stream_nolink(MiniRepo.TaskSupervisor, diff.releases, fn {name, map} ->
-        {:ok, releases} = sync_package(mirror, config, name)
+      Task.Supervisor.async_stream_nolink(
+        MiniRepo.TaskSupervisor,
+        diff.releases,
+        fn {name, map} ->
+          {:ok, releases} = sync_package(mirror, config, name)
 
-        Task.Supervisor.async_stream_nolink(
-          MiniRepo.TaskSupervisor,
-          map.created,
-          fn version ->
-            :ok = sync_tarball(mirror, config, name, version)
-          end,
-          Keyword.merge(@default_sync_opts, mirror.sync_opts)
-        )
-        |> Stream.run()
+          Task.Supervisor.async_stream_nolink(
+            MiniRepo.TaskSupervisor,
+            map.created,
+            fn version ->
+              :ok = sync_tarball(mirror, config, name, version)
+            end,
+            mirror_sync_opts
+          )
+          |> Stream.run()
 
-        for version <- map.deleted do
-          store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
-        end
+          for version <- map.deleted do
+            store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
+          end
 
-        {name, releases}
-      end)
+          {name, releases}
+        end,
+        mirror_sync_opts
+      )
 
     for {:ok, {name, releases}} <- stream, into: %{} do
       {name, releases}
