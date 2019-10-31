@@ -49,8 +49,12 @@ defmodule MiniRepo.Repository.Server do
         Map.update!(registry, package_name, fn releases ->
           for release <- releases do
             if release.version == version do
-              params = Map.update!(params, :reason, &retirement_reason/1)
-              Map.put(release, :retired, params)
+              retired = %{
+                reason: params |> Map.fetch!("reason") |> retirement_reason(),
+                message: Map.fetch!(params, "message")
+              }
+
+              Map.put(release, :retired, retired)
             else
               release
             end

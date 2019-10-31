@@ -50,8 +50,8 @@ defmodule MiniRepo.ApplicationTest do
 
     {:ok, {201, _, _}} =
       :hex_api_release.retire(config, "foo", "1.0.0", %{
-        reason: "security",
-        message: "CVE-2019-0000"
+        "reason" => "security",
+        "message" => "CVE-2019-0000"
       })
 
     {:ok, {200, _, packages}} = :hex_repo.get_versions(config)
@@ -216,6 +216,11 @@ defmodule MiniRepo.ApplicationTest do
       {_, 0} = System.cmd("mix", ~w(deps.get), env: env)
       {out, 0} = System.cmd("mix", ~w(deps), env: env)
       assert out =~ "* foo (Hex package) (mix)\n  locked at 1.0.0 (test_repo/foo)"
+    end)
+
+    File.cd!(foo_path, fn ->
+      {out, 0} = System.cmd("mix", ~w(hex.retire foo 1.0.0 security --message "CVE-2019-0000"))
+      assert out =~ "foo 1.0.0 has been retired"
     end)
   after
     Application.stop(:mini_repo)
