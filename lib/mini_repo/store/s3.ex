@@ -9,7 +9,7 @@ defmodule MiniRepo.Store.S3 do
 
       Some avaialble options are listed in:
       https://github.com/ex-aws/ex_aws/blob/master/lib/ex_aws/config.ex
-      
+
   ## Usage
 
   Add to `config/releases.exs`:
@@ -36,7 +36,7 @@ defmodule MiniRepo.Store.S3 do
           ]
 
   Finally, by default, the files stored on S3 are not publicly accessible.
-  You can enable public access by setting following bucket policy in your
+  You can enable public access by setting the following bucket policy in your
   bucket's properties:
 
   ```json
@@ -62,6 +62,31 @@ defmodule MiniRepo.Store.S3 do
       mix hex.repo add myrepo https://<bucket>.s3.<region>.amazonaws.com/repos/myrepo --public-key $MINI_REPO_PUBLIC_KEY
 
   See [Amazon S3 docs](https://docs.aws.amazon.com/s3/index.html) for more information.
+
+  You may also want to use a minimal IAM policy for the IAM user accessing the
+  S3 bucket:
+
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "VisualEditor0",
+        "Effect": "Allow",
+        "Action": [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:DeleteObject"
+        ],
+        "Resource": [
+          "arn:aws:s3:::minirepo",
+          "arn:aws:s3:::minirepo/*"
+        ]
+      }
+    ]
+  }
+  ```
   """
 
   @behaviour MiniRepo.Store
