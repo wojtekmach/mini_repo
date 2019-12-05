@@ -36,17 +36,19 @@ defmodule MiniRepo.Application do
 
   defp repositories(config) do
     for {name, options} <- Keyword.fetch!(config, :repositories) do
-      if options[:upstream_url] do
-        Logger.info("starting mirror #{name} with store #{inspect(options[:store])}")
-        struct!(MiniRepo.Mirror, [name: to_string(name)] ++ options)
-      else
-        Logger.info("starting repository #{name} with store #{inspect(options[:store])}")
-        struct!(MiniRepo.Repository, [name: to_string(name)] ++ options)
+      cond do
+        !is_nil(options[:upstream_url]) and !is_nil(options[:on_demand]) -> struct!(MiniRepo.MirrorOnDemand, [name: to_string(name)] ++ options)
+        options[:upstream_url] -> struct!(MiniRepo.Mirror, [name: to_string(name)] ++ options)
+        true ->struct!(MiniRepo.Repository, [name: to_string(name)] ++ options)
       end
     end
   end
 
   defp repository_specs(repos), do: Enum.map(repos, &repository_spec/1)
+
+
+  defp repository_spec(%MiniRepo.MirrorOnDemand{} = repo),
+    do: {MiniRepo.Mirror.ServerOnDemand, mirror: repo, name: String.to_atom(repo.name)}
 
   defp repository_spec(%MiniRepo.Mirror{} = repo),
     do: {MiniRepo.Mirror.Server, mirror: repo, name: String.to_atom(repo.name)}

@@ -78,6 +78,14 @@ defmodule MiniRepo.APIRouter do
     end
   end
 
+  get "/repos/:repo/packages/:name" do
+    send_file(conn, 200, Path.join(Application.app_dir(:mini_repo), "data/repos/#{repo}/packages/#{name}"))
+  end
+
+  get  "/repos/:repo/tarballs/:tarball" do
+    send_file(conn, 200, Path.join(Application.app_dir(:mini_repo), "data/repos/#{repo}/tarballs/#{tarball}"))
+  end
+
   match _ do
     send_resp(conn, 404, "not found")
   end
