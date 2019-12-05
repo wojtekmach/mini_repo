@@ -49,14 +49,6 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     throw("NOT IMPLEMENTED")
   end
 
-  defp get_packages_on_disk(mirror) do
-    case get_storage_path(mirror)
-         |> File.ls() do
-      {:ok, files} -> files
-      {:error, _} -> []
-    end
-  end
-
   defp get_config_from_mirror(mirror) do
     %{
       :hex_core.default_config()
@@ -67,8 +59,10 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     }
   end
 
-  defp diff_packages_on_disk(mirror, config) do 
-    get_packages_on_disk(mirror)
+  defp diff_packages_on_disk(mirror, config) do
+    mirror.registry
+    |> Map.to_list()
+    |> Enum.map(fn {name, _} -> name end)
     |> diff_packages(mirror, config)
   end
 
@@ -80,7 +74,6 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
             name in package_list,
             into: %{},
             do: {name, Map.delete(map, :version)}
-
 
       {:ok, RegistryDiff.diff(mirror.registry, versions)}
     end
@@ -95,8 +88,6 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
       created = sync_created_packages(mirror, config, diff)
       deleted = sync_deleted_packages(mirror, config, diff)
       updated = sync_releases(mirror, config, diff)
-
-      require IEx; IEx.pry
 
       mirror =
         update_in(mirror.registry, fn registry ->
@@ -118,12 +109,12 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     created = sync_created_packages(mirror, config, diff)
 
     mirror =
-    update_in(mirror.registry, fn registry ->
-      registry
-      |> Map.merge(created)
-    end)
+      update_in(mirror.registry, fn registry ->
+        registry
+        |> Map.merge(created)
+      end)
 
-     RegistryBackup.save(mirror)
+    RegistryBackup.save(mirror)
     {:reply, :ok, mirror}
   end
 
