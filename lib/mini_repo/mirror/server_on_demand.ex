@@ -1,272 +1,297 @@
 defmodule MiniRepo.Mirror.ServerOnDemand do
-    @moduledoc false
-  
-    use GenServer
-    require Logger
-    alias MiniRepo.{RegistryDiff, RegistryBackup}
-  
-    @default_sync_opts [ordered: false]
-  
-    def start_link(options) do
-      {mirror, options} = Keyword.pop(options, :mirror)
-      GenServer.start_link(__MODULE__, mirror, options)
-    end
-  
-    @impl true
-    def init(mirror) do
-      Logger.info("#{__MODULE__}" <> " Starting Up.")
-      mirror = RegistryBackup.load(mirror)
-      {:ok, mirror, {:continue, :sync}}
-    end
-  
-    @impl true
-    def handle_continue(:sync, mirror) do
-      handle_info(:sync, mirror)
-    end
-  
-    @impl true
-    def handle_info(:sync, mirror) do
-      case sync(mirror) do
-        {:ok, %MiniRepo.Mirror{} = new_mirror} ->
-          schedule_sync(new_mirror)
-          {:noreply, new_mirror}
-  
-        _ ->
-          schedule_sync(mirror)
-          {:noreply, mirror}
-      end
-    end
-  
-    defp schedule_sync(mirror) do
-      Process.send_after(self(), :sync, mirror.sync_interval)
-    end
+  @moduledoc false
 
-    defp get_storage_path(%{store: {MiniRepo.Store.Local, [root: {_, path}]}} = _mirror) do
-     Path.join(Application.app_dir(:mini_repo), "#{path}/repos/hexpm_mirror/packages")
-    end
+  use GenServer
+  require Logger
+  alias MiniRepo.{RegistryDiff, RegistryBackup}
 
-    defp get_storage_path(_mirror) do
-        throw("NOT IMPLEMENTED")
-    end
+  @default_sync_opts [ordered: false]
 
-    defp get_packages_on_disk(mirror) do
-        get_storage_path(mirror)
-        |> File.ls
-    end
-  
-    defp sync(mirror) do
-        Logger.debug("Sync/1 Running #{__MODULE__}")
-      config = %{
-        :hex_core.default_config()
-        | repo_name: mirror.upstream_name,
-          repo_url: mirror.upstream_url,
-          repo_public_key: mirror.upstream_public_key,
-          http_user_agent_fragment: user_agent_fragment()
-      }
-  
-      with {:ok, names} when is_list(names) <- sync_names(mirror, config),
-           {:ok, versions} when is_list(versions) <- sync_versions(mirror, config),
-           {:ok, packages_on_disk} <- get_packages_on_disk(mirror) do
+  def start_link(options) do
+    {mirror, options} = Keyword.pop(options, :mirror)
+    GenServer.start_link(__MODULE__, mirror, options)
+  end
 
-        versions =
-          for %{name: name} = map <- versions,
-              name in packages_on_disk,
-              into: %{},
-              do: {name, Map.delete(map, :version)}
+  @impl true
+  def init(mirror) do
+    Logger.info("#{__MODULE__}" <> " Starting Up.")
+    mirror = RegistryBackup.load(mirror)
+    {:ok, mirror, {:continue, :sync}}
+  end
 
-        diff = RegistryDiff.diff(mirror.registry, versions)
-        Logger.debug([inspect(__MODULE__), " diff: ", inspect(diff, pretty: true)])
-        created = sync_created_packages(mirror, config, diff)
-        deleted = sync_deleted_packages(mirror, config, diff)
-        updated = sync_releases(mirror, config, diff)
-  
-        mirror =
-          update_in(mirror.registry, fn registry ->
-            registry
-            |> Map.delete(deleted)
-            |> Map.merge(created)
-            |> Map.merge(updated)
-          end)
-  
-        RegistryBackup.save(mirror)
-        {:ok, mirror}
-      end
+  @impl true
+  def handle_continue(:sync, mirror) do
+    handle_info(:sync, mirror)
+  end
+
+  @impl true
+  def handle_info(:sync, mirror) do
+    case sync(mirror) do
+      {:ok, %MiniRepo.Mirror{} = new_mirror} ->
+        schedule_sync(new_mirror)
+        {:noreply, new_mirror}
+
+      _ ->
+        schedule_sync(mirror)
+        {:noreply, mirror}
     end
-  
-    defp sync_created_packages(mirror, config, diff) do
-      mirror_sync_opts = Keyword.merge(@default_sync_opts, mirror.sync_opts)
-  
-      stream =
-        Task.Supervisor.async_stream_nolink(
-          MiniRepo.TaskSupervisor,
-          diff.packages.created,
-          fn name ->
-            {:ok, releases} = sync_package(mirror, config, name)
-  
-            stream =
-              Task.Supervisor.async_stream_nolink(
-                MiniRepo.TaskSupervisor,
-                releases,
-                fn release ->
-                  :ok = sync_tarball(mirror, config, name, release.version)
-                  release
-                end,
-                mirror_sync_opts
-              )
-  
-            releases = for {:ok, release} <- stream, do: release
-            {name, releases}
-          end,
-          mirror_sync_opts
-        )
-  
-      for {:ok, {name, releases}} <- stream, into: %{} do
-        {name, releases}
-      end
+  end
+
+  defp schedule_sync(mirror) do
+    Process.send_after(self(), :sync, mirror.sync_interval)
+  end
+
+  defp get_storage_path(%{store: {MiniRepo.Store.Local, [root: {_, path}]}} = _mirror) do
+    Path.join(Application.app_dir(:mini_repo), "#{path}/repos/hexpm_mirror/packages")
+  end
+
+  defp get_storage_path(_mirror) do
+    throw("NOT IMPLEMENTED")
+  end
+
+  defp get_packages_on_disk(mirror) do
+    case get_storage_path(mirror)
+         |> File.ls() do
+      {:ok, files} -> {:ok, files}
+      {:error, _} -> {:ok, []}
     end
-  
-    defp sync_deleted_packages(mirror, _config, diff) do
-      for name <- diff.packages.deleted do
-        for %{version: version} <- mirror.registry[name] do
-          store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
-        end
-  
-        name
-      end
+  end
+
+  defp get_config_from_mirror(mirror) do
+    %{
+      :hex_core.default_config()
+      | repo_name: mirror.upstream_name,
+        repo_url: mirror.upstream_url,
+        repo_public_key: mirror.upstream_public_key,
+        http_user_agent_fragment: user_agent_fragment()
+    }
+  end
+
+  defp get_package_versions_diff_list(mirror, config, package_list) do
+    with {:ok, names} when is_list(names) <- sync_names(mirror, config),
+         {:ok, versions} when is_list(versions) <- sync_versions(mirror, config),
+         {:ok, packages_on_disk} <- get_packages_on_disk(mirror) do
+      versions =
+        for %{name: name} = map <- versions,
+            name in package_list or name in packages_on_disk,
+            into: %{},
+            do: {name, Map.delete(map, :version)}
+
+      RegistryDiff.diff(mirror.registry, versions)
     end
-  
-    defp sync_releases(mirror, config, diff) do
-      mirror_sync_opts = Keyword.merge(@default_sync_opts, mirror.sync_opts)
-  
-      stream =
-        Task.Supervisor.async_stream_nolink(
-          MiniRepo.TaskSupervisor,
-          diff.releases,
-          fn {name, map} ->
-            {:ok, releases} = sync_package(mirror, config, name)
-  
+  end
+
+  defp sync(mirror) do
+    Logger.debug("Sync/1 Running #{__MODULE__}")
+    config = get_config_from_mirror(mirror)
+
+    with {:ok, diff} <- get_package_versions_diff_list(mirror, config, []) do
+      Logger.debug([inspect(__MODULE__), " diff: ", inspect(diff, pretty: true)])
+      created = sync_created_packages(mirror, config, diff)
+      deleted = sync_deleted_packages(mirror, config, diff)
+      updated = sync_releases(mirror, config, diff)
+
+      mirror =
+        update_in(mirror.registry, fn registry ->
+          registry
+          |> Map.delete(deleted)
+          |> Map.merge(created)
+          |> Map.merge(updated)
+        end)
+
+      RegistryBackup.save(mirror)
+      {:ok, mirror}
+    end
+  end
+
+  @impl true
+  def handle_call({:put_package, name}, _from, mirror) do
+    config = get_config_from_mirror(mirror)
+    created = sync_created_packages(mirror, config, get_package_versions_diff_list(mirror, config, [name]))
+
+    mirror =
+    update_in(mirror.registry, fn registry ->
+      registry
+      |> Map.merge(created)
+    end)
+
+     RegistryBackup.save(mirror)
+    {:reply, :ok, mirror}
+  end
+
+  defp sync_created_packages(mirror, config, diff) do
+    mirror_sync_opts = Keyword.merge(@default_sync_opts, mirror.sync_opts)
+
+    stream =
+      Task.Supervisor.async_stream_nolink(
+        MiniRepo.TaskSupervisor,
+        diff.packages.created,
+        fn name ->
+          {:ok, releases} = sync_package(mirror, config, name)
+
+          stream =
             Task.Supervisor.async_stream_nolink(
               MiniRepo.TaskSupervisor,
-              map.created,
-              fn version ->
-                :ok = sync_tarball(mirror, config, name, version)
+              releases,
+              fn release ->
+                :ok = sync_tarball(mirror, config, name, release.version)
+                release
               end,
               mirror_sync_opts
             )
-            |> Stream.run()
-  
-            for version <- map.deleted do
-              store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
-            end
-  
-            {name, releases}
-          end,
-          mirror_sync_opts
-        )
-  
-      for {:ok, {name, releases}} <- stream, into: %{} do
-        {name, releases}
-      end
-    end
-  
-    # we don't use this resource for anything, we just copy it (since it's signed by upstream)
-    defp sync_names(mirror, config) do
-      with {:ok, {200, _, names_signed}} <- fetch_names(config),
-           {:ok, names} <- decode_names(mirror, names_signed),
-           :ok <- store_put(mirror, "names", names_signed) do
-        {:ok, names}
-      else
-        other ->
-          Logger.warn("#{inspect(__MODULE__)} sync_names failed: #{inspect(other)}")
-          other
-      end
-    end
-  
-    defp sync_versions(mirror, config) do
-      with {:ok, {200, _, signed}} <- fetch_versions(config),
-           {:ok, versions} <- decode_versions(mirror, signed),
-           :ok <- store_put(mirror, "versions", signed) do
-        {:ok, versions}
-      else
-        other ->
-          Logger.warn("#{inspect(__MODULE__)} sync_versions failed: #{inspect(other)}")
-          other
-      end
-    end
-  
-    defp sync_package(mirror, config, name) do
-      with {:ok, {200, _, signed}} <- fetch_package(config, name),
-           {:ok, package} <- decode_package(mirror, signed, name),
-           :ok <- store_put(mirror, ["packages", name], signed) do
-        {:ok, package}
-      else
-        other ->
-          Logger.warn("#{inspect(__MODULE__)} sync_package failed: #{inspect(other)}")
-          other
-      end
-    end
-  
-    defp sync_tarball(mirror, config, name, version) do
-      with {:ok, {200, _headers, tarball}} <- fetch_tarball(config, name, version),
-           :ok <- store_put(mirror, ["tarballs", "#{name}-#{version}.tar"], tarball) do
-        :ok
-      else
-        other ->
-          Logger.warn("#{inspect(__MODULE__)} sync_tarball failed: #{inspect(other)}")
-          other
-      end
-    end
-  
-    defp fetch_names(config) do
-      Logger.debug("#{inspect(__MODULE__)} fetching names")
-      :hex_http.request(config, :get, config.repo_url <> "/names", %{}, :undefined)
-    end
-  
-    defp fetch_versions(config) do
-      Logger.debug("#{inspect(__MODULE__)} fetching versions")
-      :hex_http.request(config, :get, config.repo_url <> "/versions", %{}, :undefined)
-    end
-  
-    defp fetch_package(config, name) do
-      Logger.debug("#{inspect(__MODULE__)} fetching package #{name}")
-      :hex_http.request(config, :get, config.repo_url <> "/packages/" <> name, %{}, :undefined)
-    end
-  
-    defp fetch_tarball(config, name, version) do
-      Logger.debug("#{inspect(__MODULE__)} fetching tarball #{name}-#{version}.tar")
-      :hex_repo.get_tarball(config, name, version)
-    end
-  
-    defp decode_names(mirror, body) do
-      {:ok, payload} = decode_and_verify_signed(body, mirror)
-      :hex_registry.decode_names(payload, mirror.upstream_name)
-    end
-  
-    defp decode_versions(mirror, body) do
-      {:ok, payload} = decode_and_verify_signed(body, mirror)
-      :hex_registry.decode_versions(payload, mirror.upstream_name)
-    end
-  
-    defp decode_package(mirror, body, name) do
-      {:ok, payload} = decode_and_verify_signed(body, mirror)
-      :hex_registry.decode_package(payload, mirror.upstream_name, name)
-    end
-  
-    defp decode_and_verify_signed(body, mirror) do
-      :hex_registry.decode_and_verify_signed(:zlib.gunzip(body), mirror.upstream_public_key)
-    end
-  
-    defp user_agent_fragment() do
-      {:ok, vsn} = :application.get_key(:mini_repo, :vsn)
-      "mini_repo/#{vsn}"
-    end
-  
-    defp store_put(mirror, path, contents) do
-      MiniRepo.Store.put(mirror.store, ["repos", mirror.name] ++ List.wrap(path), contents)
-    end
-  
-    defp store_delete(repository, name) do
-      MiniRepo.Store.delete(repository.store, name)
+
+          releases = for {:ok, release} <- stream, do: release
+          {name, releases}
+        end,
+        mirror_sync_opts
+      )
+
+    for {:ok, {name, releases}} <- stream, into: %{} do
+      {name, releases}
     end
   end
-  
+
+  defp sync_deleted_packages(mirror, _config, diff) do
+    for name <- diff.packages.deleted do
+      for %{version: version} <- mirror.registry[name] do
+        store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
+      end
+
+      name
+    end
+  end
+
+  defp sync_releases(mirror, config, diff) do
+    mirror_sync_opts = Keyword.merge(@default_sync_opts, mirror.sync_opts)
+
+    stream =
+      Task.Supervisor.async_stream_nolink(
+        MiniRepo.TaskSupervisor,
+        diff.releases,
+        fn {name, map} ->
+          {:ok, releases} = sync_package(mirror, config, name)
+
+          Task.Supervisor.async_stream_nolink(
+            MiniRepo.TaskSupervisor,
+            map.created,
+            fn version ->
+              :ok = sync_tarball(mirror, config, name, version)
+            end,
+            mirror_sync_opts
+          )
+          |> Stream.run()
+
+          for version <- map.deleted do
+            store_delete(mirror, ["tarballs", "#{name}-#{version}.tar"])
+          end
+
+          {name, releases}
+        end,
+        mirror_sync_opts
+      )
+
+    for {:ok, {name, releases}} <- stream, into: %{} do
+      {name, releases}
+    end
+  end
+
+  # we don't use this resource for anything, we just copy it (since it's signed by upstream)
+  defp sync_names(mirror, config) do
+    with {:ok, {200, _, names_signed}} <- fetch_names(config),
+         {:ok, names} <- decode_names(mirror, names_signed),
+         :ok <- store_put(mirror, "names", names_signed) do
+      {:ok, names}
+    else
+      other ->
+        Logger.warn("#{inspect(__MODULE__)} sync_names failed: #{inspect(other)}")
+        other
+    end
+  end
+
+  defp sync_versions(mirror, config) do
+    with {:ok, {200, _, signed}} <- fetch_versions(config),
+         {:ok, versions} <- decode_versions(mirror, signed),
+         :ok <- store_put(mirror, "versions", signed) do
+      {:ok, versions}
+    else
+      other ->
+        Logger.warn("#{inspect(__MODULE__)} sync_versions failed: #{inspect(other)}")
+        other
+    end
+  end
+
+  defp sync_package(mirror, config, name) do
+    with {:ok, {200, _, signed}} <- fetch_package(config, name),
+         {:ok, package} <- decode_package(mirror, signed, name),
+         :ok <- store_put(mirror, ["packages", name], signed) do
+      {:ok, package}
+    else
+      other ->
+        Logger.warn("#{inspect(__MODULE__)} sync_package failed: #{inspect(other)}")
+        other
+    end
+  end
+
+  defp sync_tarball(mirror, config, name, version) do
+    with {:ok, {200, _headers, tarball}} <- fetch_tarball(config, name, version),
+         :ok <- store_put(mirror, ["tarballs", "#{name}-#{version}.tar"], tarball) do
+      :ok
+    else
+      other ->
+        Logger.warn("#{inspect(__MODULE__)} sync_tarball failed: #{inspect(other)}")
+        other
+    end
+  end
+
+  def fetch_names(config) do
+    Logger.debug("#{inspect(__MODULE__)} fetching names")
+    :hex_http.request(config, :get, config.repo_url <> "/names", %{}, :undefined)
+  end
+
+  defp fetch_versions(config) do
+    Logger.debug("#{inspect(__MODULE__)} fetching versions")
+    :hex_http.request(config, :get, config.repo_url <> "/versions", %{}, :undefined)
+  end
+
+  defp fetch_package(config, name) do
+    Logger.debug("#{inspect(__MODULE__)} fetching package #{name}")
+    :hex_http.request(config, :get, config.repo_url <> "/packages/" <> name, %{}, :undefined)
+  end
+
+  defp fetch_tarball(config, name, version) do
+    Logger.debug("#{inspect(__MODULE__)} fetching tarball #{name}-#{version}.tar")
+    :hex_repo.get_tarball(config, name, version)
+  end
+
+  defp decode_names(mirror, body) do
+    {:ok, payload} = decode_and_verify_signed(body, mirror)
+    :hex_registry.decode_names(payload, mirror.upstream_name)
+  end
+
+  defp decode_versions(mirror, body) do
+    {:ok, payload} = decode_and_verify_signed(body, mirror)
+    :hex_registry.decode_versions(payload, mirror.upstream_name)
+  end
+
+  defp decode_package(mirror, body, name) do
+    {:ok, payload} = decode_and_verify_signed(body, mirror)
+    :hex_registry.decode_package(payload, mirror.upstream_name, name)
+  end
+
+  defp decode_and_verify_signed(body, mirror) do
+    :hex_registry.decode_and_verify_signed(:zlib.gunzip(body), mirror.upstream_public_key)
+  end
+
+  defp user_agent_fragment() do
+    {:ok, vsn} = :application.get_key(:mini_repo, :vsn)
+    "mini_repo/#{vsn}"
+  end
+
+  defp store_put(mirror, path, contents) do
+    MiniRepo.Store.put(mirror.store, ["repos", mirror.name] ++ List.wrap(path), contents)
+  end
+
+  defp store_delete(repository, name) do
+    MiniRepo.Store.delete(repository.store, name)
+  end
+end
