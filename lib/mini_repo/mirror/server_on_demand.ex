@@ -104,8 +104,9 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
 
   @impl true
   def handle_call({:put_package, name}, _from, mirror) do
+    # TODO: Make this flow better
     config = get_config_from_mirror(mirror)
-    diff = diff_packages(mirror, config, [name])
+    {:ok, diff} = diff_packages([name], mirror, config)
     created = sync_created_packages(mirror, config, diff)
 
     mirror =
