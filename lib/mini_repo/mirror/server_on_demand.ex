@@ -52,8 +52,8 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
   defp get_packages_on_disk(mirror) do
     case get_storage_path(mirror)
          |> File.ls() do
-      {:ok, files} -> {:ok, files}
-      {:error, _} -> {:ok, []}
+      {:ok, files} -> files
+      {:error, _} -> []
     end
   end
 
@@ -67,17 +67,22 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     }
   end
 
-  defp get_package_versions_diff_list(mirror, config, package_list) do
+  defp diff_packages_on_disk(mirror, config) do 
+    get_packages_on_disk(mirror)
+    |> diff_packages(mirror, config)
+  end
+
+  defp diff_packages(package_list, mirror, config) do
     with {:ok, names} when is_list(names) <- sync_names(mirror, config),
-         {:ok, versions} when is_list(versions) <- sync_versions(mirror, config),
-         {:ok, packages_on_disk} <- get_packages_on_disk(mirror) do
+         {:ok, versions} when is_list(versions) <- sync_versions(mirror, config) do
       versions =
         for %{name: name} = map <- versions,
-            name in package_list or name in packages_on_disk,
+            name in package_list,
             into: %{},
             do: {name, Map.delete(map, :version)}
 
-      RegistryDiff.diff(mirror.registry, versions)
+
+      {:ok, RegistryDiff.diff(mirror.registry, versions)}
     end
   end
 
@@ -85,11 +90,13 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     Logger.debug("Sync/1 Running #{__MODULE__}")
     config = get_config_from_mirror(mirror)
 
-    with {:ok, diff} <- get_package_versions_diff_list(mirror, config, []) do
+    with {:ok, diff} <- diff_packages_on_disk(mirror, config) do
       Logger.debug([inspect(__MODULE__), " diff: ", inspect(diff, pretty: true)])
       created = sync_created_packages(mirror, config, diff)
       deleted = sync_deleted_packages(mirror, config, diff)
       updated = sync_releases(mirror, config, diff)
+
+      require IEx; IEx.pry
 
       mirror =
         update_in(mirror.registry, fn registry ->
@@ -107,7 +114,8 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
   @impl true
   def handle_call({:put_package, name}, _from, mirror) do
     config = get_config_from_mirror(mirror)
-    created = sync_created_packages(mirror, config, get_package_versions_diff_list(mirror, config, [name]))
+    diff = diff_packages(mirror, config, [name])
+    created = sync_created_packages(mirror, config, diff)
 
     mirror =
     update_in(mirror.registry, fn registry ->
