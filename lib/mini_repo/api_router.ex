@@ -1,6 +1,7 @@
 defmodule MiniRepo.APIRouter do
   @moduledoc false
   use Plug.Router
+  require Logger
 
   plug Plug.Parsers,
     parsers: [MiniRepo.HexErlangParser],
@@ -74,12 +75,34 @@ defmodule MiniRepo.APIRouter do
     end
   end
 
-  get "/repos/:repo/packages/:name" do
-    send_file(conn, 200, Path.join(Application.app_dir(:mini_repo), "data/repos/#{repo}/packages/#{name}"))
+  get "/repos/hexpm_mirror/packages/:name" do
+    if is_configured_on_demand?() do
+      MiniRepo.Mirror.ServerOnDemand.fetch_if_not_exist(name)
+    end
+   
+    path = Path.join(Application.app_dir(:mini_repo), "data/repos/hexpm_mirror/packages/#{name}")
+
+    case File.exists?(path) do
+      true -> send_file(conn, 200, path)
+      false -> send_resp(conn, 404, "Package not found")
+    end
   end
 
-  get  "/repos/:repo/tarballs/:tarball" do
-    send_file(conn, 200, Path.join(Application.app_dir(:mini_repo), "data/repos/#{repo}/tarballs/#{tarball}"))
+  get "/repos/hexpm_mirror/tarballs/:tarball" do
+    name = 
+    String.split(tarball, "-")
+    |> Enum.at(0)
+
+    if is_configured_on_demand?() do
+      MiniRepo.Mirror.ServerOnDemand.fetch_if_not_exist(name)
+    end
+
+    path = Path.join(Application.app_dir(:mini_repo), "data/repos/hexpm_mirror/tarballs/#{tarball}")
+
+    case File.exists?(path) do
+      true -> send_file(conn, 200, path)
+      false -> send_resp(conn, 404, "Package not found")
+    end
   end
 
   match _ do
@@ -95,6 +118,17 @@ defmodule MiniRepo.APIRouter do
       raise ArgumentError,
             "#{inspect(repo)} is not allowed, allowed repos: #{inspect(allowed_repos)}"
     end
+  end
+
+  def is_configured_on_demand?() do
+    Application.get_all_env(:mini_repo)
+    |> Keyword.fetch!(:repositories)
+    |> Enum.filter(fn
+      {:hexpm_mirror, x} -> Keyword.has_key?(x, :on_demand)
+      {_, _} -> false
+    end)
+    |> Enum.empty?()
+    |> Kernel.not()
   end
 
   defp read_tarball(conn, tarball \\ <<>>) do

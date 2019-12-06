@@ -59,10 +59,14 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     }
   end
 
-  defp diff_packages_on_disk(mirror, config) do
+  defp get_packages_on_disk(mirror) do
     mirror.registry
     |> Map.to_list()
     |> Enum.map(fn {name, _} -> name end)
+  end
+
+  defp diff_packages_on_disk(mirror, config) do
+    get_packages_on_disk(mirror)
     |> diff_packages(mirror, config)
   end
 
@@ -102,6 +106,31 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     end
   end
 
+  def fetch_if_not_exist(name) do
+    get_pid()
+    |> GenServer.call({:package_exist, name}, 30_000)
+    |> put_package(name)
+  end
+
+  @impl true
+  def handle_call({:package_exist, name}, _from, mirror) do
+    exist =
+      get_packages_on_disk(mirror)
+      |> Enum.member?(name)
+      IO.puts exist
+
+    {:reply, exist, mirror}
+  end
+
+  def put_package(_exist = false, name) do
+    GenServer.whereis(:hexpm_mirror)
+    |> GenServer.call({:put_package, name}, 30_000)
+  end
+
+  def put_package(_exist = true, _name) do
+    :ok
+  end
+
   @impl true
   def handle_call({:put_package, name}, _from, mirror) do
     # TODO: Make this flow better
@@ -117,6 +146,10 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
 
     RegistryBackup.save(mirror)
     {:reply, :ok, mirror}
+  end
+
+  defp get_pid() do
+    GenServer.whereis(:hexpm_mirror)
   end
 
   defp sync_created_packages(mirror, config, diff) do
