@@ -79,29 +79,41 @@ defmodule MiniRepo.APIRouter do
     if is_configured_on_demand?() do
       MiniRepo.Mirror.ServerOnDemand.fetch_if_not_exist(name)
     end
-   
-    path = Path.join(Application.app_dir(:mini_repo), "data/repos/hexpm_mirror/packages/#{name}")
 
-    case File.exists?(path) do
-      true -> send_file(conn, 200, path)
-      false -> send_resp(conn, 404, "Package not found")
+    with {:ok, data_path} <- get_data_dir(:hexpm_mirror),
+         package_path <-
+           Path.join(
+             Application.app_dir(:mini_repo),
+             "#{data_path}/repos/hexpm_mirror/packages/#{name}"
+           ),
+         true <- File.exists?(package_path) do
+      send_file(conn, 200, package_path)
+    else
+      _ ->
+        send_resp(conn, 404, "not found")
     end
   end
 
   get "/repos/hexpm_mirror/tarballs/:tarball" do
-    name = 
-    String.split(tarball, "-")
-    |> Enum.at(0)
+    name =
+      String.split(tarball, "-")
+      |> Enum.at(0)
 
     if is_configured_on_demand?() do
       MiniRepo.Mirror.ServerOnDemand.fetch_if_not_exist(name)
     end
 
-    path = Path.join(Application.app_dir(:mini_repo), "data/repos/hexpm_mirror/tarballs/#{tarball}")
-
-    case File.exists?(path) do
-      true -> send_file(conn, 200, path)
-      false -> send_resp(conn, 404, "Package not found")
+    with {:ok, data_path} <- get_data_dir(:hexpm_mirror),
+         tarbal_path <-
+           Path.join(
+             Application.app_dir(:mini_repo),
+             "#{data_path}/repos/hexpm_mirror/tarballs/#{tarball}"
+           ),
+         true <- File.exists?(tarbal_path) do
+      send_file(conn, 200, tarbal_path)
+    else
+      _ ->
+        send_resp(conn, 404, "not found")
     end
   end
 
@@ -120,9 +132,26 @@ defmodule MiniRepo.APIRouter do
     end
   end
 
-  def is_configured_on_demand?() do
-    Application.get_all_env(:mini_repo)
-    |> Keyword.fetch!(:repositories)
+  def get_data_dir(repo) do
+    repo =
+      Application.get_env(:mini_repo, :repositories)
+      |> Enum.filter(fn {key, _} -> key == repo end)
+
+    case repo do
+      [] ->
+        {:error, "Repo not found"}
+
+      [{_key, opts}] ->
+        {_, [root: {_, dir}]} = opts[:store]
+        {:ok, dir}
+
+      _ ->
+        {:error, "Duplicate repos defined"}
+    end
+  end
+
+  defp is_configured_on_demand?() do
+    Application.get_env(:mini_repo, :repositories)
     |> Enum.filter(fn
       {:hexpm_mirror, x} -> Keyword.has_key?(x, :on_demand)
       {_, _} -> false
