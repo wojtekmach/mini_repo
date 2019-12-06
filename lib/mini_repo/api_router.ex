@@ -88,8 +88,7 @@ defmodule MiniRepo.APIRouter do
          package_path <-
            Path.join(
              Application.app_dir(:mini_repo),
-            #  "#{data_path}/repos/hexpm_mirror/packages/#{name}"
-             "#{data_path}/repos/hexpm_mirror/names"
+             "#{data_path}/repos/hexpm_mirror/packages/#{name}"
            ),
          true <- File.exists?(package_path) do
       send_file(conn, 200, package_path)
