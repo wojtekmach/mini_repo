@@ -1,8 +1,8 @@
 import Config
 
 config :mini_repo,
-  port: 4444,
-  url: "http://localhost:4444"
+  port: 4000,
+  url: "http://localhost:4000"
 
 store = {MiniRepo.Store.Local, root: {:mini_repo, "data"}}
 
