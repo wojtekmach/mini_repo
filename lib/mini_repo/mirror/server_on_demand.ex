@@ -207,9 +207,6 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
         |> Map.merge(created)
       end)
 
-    require IEx
-    IEx.pry()
-
     RegistryBackup.save(mirror)
     mirror
   end
