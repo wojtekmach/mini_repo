@@ -77,7 +77,7 @@ defmodule MiniRepo.APIRouter do
 
   get "/repos/hexpm_mirror/packages/:name" do
     if is_configured_on_demand?() do
-      MiniRepo.Mirror.ServerOnDemand.fetch_if_not_exist(name)
+      MiniRepo.Mirror.ServerOnDemand.fetch_package_if_not_exist(name)
     end
 
     with {:ok, data_path} <- get_data_dir(:hexpm_mirror),
@@ -95,12 +95,16 @@ defmodule MiniRepo.APIRouter do
   end
 
   get "/repos/hexpm_mirror/tarballs/:tarball" do
-    name =
+    tb =
       String.split(tarball, "-")
-      |> Enum.at(0)
+
+      name = Enum.at(tb, 0)
+      version = 
+      Enum.at(tb, 1)
+      |> String.replace(".tar", "")
 
     if is_configured_on_demand?() do
-      MiniRepo.Mirror.ServerOnDemand.fetch_if_not_exist(name)
+      MiniRepo.Mirror.ServerOnDemand.fetch_tarball_if_not_exist(name, version)
     end
 
     with {:ok, data_path} <- get_data_dir(:hexpm_mirror),

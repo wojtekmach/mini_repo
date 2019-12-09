@@ -106,18 +106,22 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     end
   end
 
-  def fetch_if_not_exist(name) do
+  def fetch_package_if_not_exist(name) do
     get_pid()
     |> GenServer.call({:package_exist, name}, 30_000)
     |> put_package(name)
   end
 
+  def fetch_tarball_if_not_exist(name, version) do
+    get_pid()
+    |> GenServer.call({:package_exist, name}, 30_000)
+    |> put_tarball(name, version)
+  end
+
   @impl true
   def handle_call({:package_exist, name}, _from, mirror) do
-    exist =
-      get_packages_on_disk(mirror)
-      |> Enum.member?(name)
-      IO.puts exist
+    packages = get_packages_on_disk(mirror)
+    exist = Enum.member?(packages, name)
 
     {:reply, exist, mirror}
   end
@@ -131,25 +135,28 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     :ok
   end
 
+  def put_tarball(_exist = false, name, version) do
+    GenServer.whereis(:hexpm_mirror)
+    |> GenServer.call({:put_tarball, name, version}, 30_000)
+  end
+
+  def put_tarball(_exist = true, _name, _versio) do
+    :ok
+  end
+
   @impl true
   def handle_call({:put_package, name}, _from, mirror) do
-    # TODO: Make this flow better
-    config = get_config_from_mirror(mirror)
-    {:ok, diff} = diff_packages([name], mirror, config)
-    created = sync_created_packages(mirror, config, diff)
-
-    mirror =
-      update_in(mirror.registry, fn registry ->
-        registry
-        |> Map.merge(created)
-      end)
-
-    RegistryBackup.save(mirror)
+    {:ok, _releases} = sync_package(mirror, get_config_from_mirror(mirror), name)
     {:reply, :ok, mirror}
   end
 
   defp get_pid() do
     GenServer.whereis(:hexpm_mirror)
+  end
+
+  def handle_call({:put_tarball, name, version}, _from, mirror) do
+    new_mirror = sync_package_version(mirror, get_config_from_mirror(mirror), name, version)
+    {:reply, :ok, new_mirror}
   end
 
   defp sync_created_packages(mirror, config, diff) do
@@ -182,6 +189,29 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     for {:ok, {name, releases}} <- stream, into: %{} do
       {name, releases}
     end
+  end
+
+  defp sync_package_version(mirror, config, name, version) do
+    {:ok, releases} = sync_package(mirror, config, name)
+
+    :ok = sync_tarball(mirror, config, name, version)
+
+    created =
+      Enum.filter(releases, fn r -> r.version == version end)
+      |> Enum.map(fn r -> {name, [r]} end)
+      |> Enum.into(%{})
+
+    mirror =
+      update_in(mirror.registry, fn registry ->
+        registry
+        |> Map.merge(created)
+      end)
+
+    require IEx
+    IEx.pry()
+
+    RegistryBackup.save(mirror)
+    mirror
   end
 
   defp sync_deleted_packages(mirror, _config, diff) do
