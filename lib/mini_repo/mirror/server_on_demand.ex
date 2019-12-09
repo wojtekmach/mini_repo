@@ -41,14 +41,6 @@ defmodule MiniRepo.Mirror.ServerOnDemand do
     Process.send_after(self(), :sync, mirror.sync_interval)
   end
 
-  defp get_storage_path(%{store: {MiniRepo.Store.Local, [root: {_, path}]}} = _mirror) do
-    Path.join(Application.app_dir(:mini_repo), "#{path}/repos/hexpm_mirror/packages")
-  end
-
-  defp get_storage_path(_mirror) do
-    throw("NOT IMPLEMENTED")
-  end
-
   defp get_config_from_mirror(mirror) do
     %{
       :hex_core.default_config()
