@@ -88,11 +88,18 @@ defmodule MiniRepo.Repository.Server do
 
   def publish_docs(pid, package_name, version, docs_tarball) do
     Agent.update(pid, fn repository ->
-      store_put(
-        repository,
-        ["repos", repository.name, "docs", "#{package_name}-#{version}.tar.gz"],
+      prefix = ["repos", repository.name, "docs", package_name, version]
+
+      store_put(repository, prefix ++ ["#{package_name}-#{version}.tar.gz"], docs_tarball)
+
+      if repository.extract_docs do
         docs_tarball
-      )
+        |> extract_tar!()
+        |> Enum.map(fn {name, contents} ->
+          path = Path.split(name)
+          store_put(repository, prefix ++ path, contents)
+        end)
+      end
 
       repository
     end)
@@ -130,5 +137,10 @@ defmodule MiniRepo.Repository.Server do
 
   defp store_delete(repository, name) do
     MiniRepo.Store.delete(repository.store, name)
+  end
+
+  defp extract_tar!(contents) do
+    {:ok, result} = :erl_tar.extract({:binary, contents}, [:compressed, :memory])
+    result
   end
 end
