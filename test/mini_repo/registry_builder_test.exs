@@ -18,17 +18,23 @@ defmodule MiniRepo.RegistryBuilderTest do
   test "build_full", %{repository: repository} do
     registry = %{
       "foo" => [
-        %{version: "1.0.0", checksum: "abcd"},
+        %{
+          version: "1.0.0",
+          inner_checksum: "inner1",
+          outer_checksum: "outer1"
+        },
         %{
           version: "1.1.0",
-          checksum: "efgh",
+          inner_checksum: "inner2",
+          outer_checksum: "outer2",
           retired: %{reason: :RETIRED_SECURITY, message: "CVE-2019-0000"}
         }
       ],
       "bar" => [
         %{
           version: "1.0.0",
-          checksum: "ijkl",
+          inner_checksum: "inner3",
+          outer_checksum: "outer3",
           dependencies: [
             %{package: "foo", requirement: "~> 1.0"}
           ]
@@ -58,12 +64,14 @@ defmodule MiniRepo.RegistryBuilderTest do
               [
                 %{
                   version: "1.0.0",
-                  checksum: "abcd",
+                  inner_checksum: "inner1",
+                  outer_checksum: "outer1",
                   dependencies: []
                 },
                 %{
                   version: "1.1.0",
-                  checksum: "efgh",
+                  inner_checksum: "inner2",
+                  outer_checksum: "outer2",
                   dependencies: [],
                   retired: %{reason: :RETIRED_SECURITY, message: "CVE-2019-0000"}
                 }
@@ -75,7 +83,8 @@ defmodule MiniRepo.RegistryBuilderTest do
                 %{
                   dependencies: [%{package: "foo", requirement: "~> 1.0"}],
                   version: "1.0.0",
-                  checksum: "ijkl"
+                  inner_checksum: "inner3",
+                  outer_checksum: "outer3"
                 }
               ]}
   end
@@ -83,17 +92,23 @@ defmodule MiniRepo.RegistryBuilderTest do
   test "build_partial", %{repository: repository} do
     registry = %{
       "foo" => [
-        %{version: "1.0.0", checksum: "abcd"},
+        %{
+          version: "1.0.0",
+          inner_checksum: "inner1",
+          outer_checksum: "outer1"
+        },
         %{
           version: "1.1.0",
-          checksum: "efgh",
+          inner_checksum: "inner1",
+          outer_checksum: "outer1",
           retired: %{reason: :RETIRED_SECURITY, message: "CVE-2019-0000"}
         }
       ],
       "bar" => [
         %{
           version: "1.0.0",
-          checksum: "ijkl",
+          inner_checksum: "inner2",
+          outer_checksum: "outer2",
           dependencies: [
             %{package: "foo", requirement: "~> 1.0"}
           ]

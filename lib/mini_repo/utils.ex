@@ -4,8 +4,7 @@ defmodule MiniRepo.Utils do
   def unpack_tarball(tarball) do
     with {:ok, result} <- :hex_tarball.unpack(tarball, :memory),
          :ok <- validate_metadata(result.metadata) do
-      %{checksum: checksum, metadata: metadata} = result
-      {:ok, {metadata["name"], build_release(metadata, checksum)}}
+      {:ok, {result.metadata["name"], build_release(result)}}
     end
   end
 
@@ -31,11 +30,12 @@ defmodule MiniRepo.Utils do
     end
   end
 
-  defp build_release(metadata, checksum) do
+  defp build_release(result) do
     %{
-      version: Map.fetch!(metadata, "version"),
-      checksum: checksum,
-      dependencies: build_dependencies(metadata)
+      version: Map.fetch!(result.metadata, "version"),
+      inner_checksum: result.inner_checksum,
+      outer_checksum: result.outer_checksum,
+      dependencies: build_dependencies(result.metadata)
     }
   end
 

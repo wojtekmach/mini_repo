@@ -33,7 +33,11 @@ defmodule MiniRepo.APIRouter do
         |> send_resp(200, body)
 
       {:error, _} = error ->
-        send_resp(conn, 400, inspect(error))
+        body = :erlang.term_to_binary(error)
+
+        conn
+        |> put_resp_content_type("application/vnd.hex+erlang")
+        |> send_resp(400, body)
     end
   end
 

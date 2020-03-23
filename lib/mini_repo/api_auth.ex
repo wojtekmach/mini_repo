@@ -23,7 +23,8 @@ defmodule MiniRepo.APIAuth do
 
   defp unauthorized(conn) do
     conn
-    |> send_resp(401, "unauthorized")
+    |> put_resp_content_type("application/vnd.hex+erlang")
+    |> send_resp(401, :erlang.term_to_binary("unauthorized"))
     |> halt()
   end
 end
