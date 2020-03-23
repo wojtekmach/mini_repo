@@ -21,7 +21,7 @@ defmodule MiniRepo.MixProject do
 
   defp deps() do
     [
-      {:hex_core, "~> 0.6.0", path: "../hex_core"},
+      {:hex_core, "~> 0.6.0"},
 
       # plug
       {:plug, "~> 1.0"},
