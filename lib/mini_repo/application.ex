@@ -37,8 +37,10 @@ defmodule MiniRepo.Application do
   defp repositories(config) do
     for {name, options} <- Keyword.fetch!(config, :repositories) do
       if options[:upstream_url] do
+        Logger.info("starting mirror #{name} with store #{inspect(options[:store])}")
         struct!(MiniRepo.Mirror, [name: to_string(name)] ++ options)
       else
+        Logger.info("starting repository #{name} with store #{inspect(options[:store])}")
         struct!(MiniRepo.Repository, [name: to_string(name)] ++ options)
       end
     end
