@@ -16,7 +16,9 @@ defmodule MiniRepo.Repository.Server do
           store_put(repository, tarball_path(repository, package_name, release.version), tarball)
 
         update_registry(repository, package_name, fn registry ->
-          Map.update(registry, package_name, [release], &[release | &1])
+          Map.update(registry, package_name, [release], fn releases ->
+            Enum.sort([release | releases], &(Version.compare(&1.version, &2.version) == :lt))
+          end)
         end)
       end)
     end
