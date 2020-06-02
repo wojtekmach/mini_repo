@@ -100,6 +100,13 @@ defmodule MiniRepo.Repository.Server do
     end)
   end
 
+  def rebuild(pid) do
+    Agent.update(pid, fn repository ->
+      build_full_registry(repository)
+      repository
+    end)
+  end
+
   defp update_registry(repository, package_name, fun) do
     repository = Map.update!(repository, :registry, fun)
     build_partial_registry(repository, package_name)
@@ -107,14 +114,13 @@ defmodule MiniRepo.Repository.Server do
     repository
   end
 
-  # defp build_full_registry(repository, repo) do
-  #   packages = Map.fetch!(repository.registry, repo)
-  #   resources = MiniRepo.RegistryBuilder.build_full(repository, packages)
+  defp build_full_registry(repository) do
+    resources = MiniRepo.RegistryBuilder.build_full(repository, repository.registry)
 
-  #   for {name, content} <- resources do
-  #     store_put(repository, ["repos", repo, name], content)
-  #   end
-  # end
+    for {name, content} <- resources do
+      store_put(repository, ["repos", repository.name, name], content)
+    end
+  end
 
   defp build_partial_registry(repository, package_name) do
     resources =

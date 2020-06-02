@@ -2,7 +2,8 @@ defmodule MiniRepo.RegistryBuilder do
   def build_full(repository, registry) do
     resources = %{
       "names" => build_names(repository, registry),
-      "versions" => build_versions(repository, registry)
+      "versions" => build_versions(repository, registry),
+      "public_key" => repository.public_key
     }
 
     for {name, releases} <- registry, into: resources do
