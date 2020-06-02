@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## HEAD
+
+* Add `/public_key`
+* Handle outer checksums
+* Document minimal IAM policy for accessing S3
+* Incoming params should have string (not atom) keys
+* Apply `:sync_opts` to syncing releases
+
 ## v0.2.0 (2019-10-09)
 
 * Add simple auth
