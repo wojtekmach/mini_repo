@@ -1,5 +1,7 @@
 # MiniRepo
 
+:warning: MiniRepo is deprecated in favour of an offical self-hosting solution from the Hex team, [`mix hex.registry build`](https://github.com/hexpm/hex/blob/90aa44fa8a1e59f2ae65f490edb984e4d6c853d1/lib/mix/tasks/hex.registry.ex) (available from Hex v0.21+).
+
 MiniRepo allows self-hosting of Hex packages.
 
 Features:
